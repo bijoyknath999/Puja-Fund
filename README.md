@@ -2,6 +2,16 @@
 
 Lightweight, responsive, raw-PHP web application to manage collections and expenses for Ganesh Puja.
 
+## 📸 Screenshots
+
+### Dashboard Overview
+![Dashboard](screenshots/dashboard.png)
+*Modern glass morphism design with fund balance summary and recent transactions*
+
+### Mobile Responsive Design
+![Mobile View](screenshots/mobile-view.png)
+*Optimized card layout for mobile devices*
+
 ## 🚀 Quick Setup
 
 ### Option 1: Automated Installation (Recommended)
