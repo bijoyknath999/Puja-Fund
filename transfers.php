@@ -2,6 +2,7 @@
 include 'auth.php';
 include 'db.php';
 include 'lang.php';
+include 'year_helper.php';
 
 // Check if user is manager
 if($_SESSION['user']['role'] != 'manager') {
@@ -11,6 +12,10 @@ if($_SESSION['user']['role'] != 'manager') {
 
 $lang = getCurrentLanguage();
 $t = getTranslations($lang);
+
+$activeYear = getActiveYear($conn);
+$selectedYear = $_GET['year'] ?? $activeYear;
+$availableYears = getAvailableYears($conn, $activeYear);
 
 // Handle transfer deletion
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_transfer'])) {
@@ -82,19 +87,23 @@ function getUserBalance($user_id, $conn) {
     return $collections - $expenses + $transferIn - $transferOut;
 }
 
-// Get all transfers (completed, pending, cancelled)
+// Get all transfers (completed, pending, cancelled) for the selected year
 $transfers_query = "
-    SELECT t.*, 
-           u1.name as from_user_name, 
+    SELECT t.*,
+           u1.name as from_user_name,
            u2.name as to_user_name,
            u3.name as created_by_name
-    FROM transfers t 
-    JOIN users u1 ON t.from_user_id = u1.id 
-    JOIN users u2 ON t.to_user_id = u2.id 
-    JOIN users u3 ON t.created_by = u3.id 
+    FROM transfers t
+    JOIN users u1 ON t.from_user_id = u1.id
+    JOIN users u2 ON t.to_user_id = u2.id
+    JOIN users u3 ON t.created_by = u3.id
+    WHERE YEAR(t.transfer_date) = ?
     ORDER BY t.created_at DESC
 ";
-$transfers_result = $conn->query($transfers_query);
+$transfers_stmt = $conn->prepare($transfers_query);
+$transfers_stmt->bind_param('i', $selectedYear);
+$transfers_stmt->execute();
+$transfers_result = $transfers_stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -105,6 +114,7 @@ $transfers_result = $conn->query($transfers_query);
     <title><?php echo $t['transfers']; ?> - Puja Fund</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -202,6 +212,11 @@ $transfers_result = $conn->query($transfers_query);
                             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="settings.php">
+                            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
+                        </a>
+                    </li>
                     <?php endif; ?>
                 </ul>
                 <ul class="navbar-nav">
@@ -231,16 +246,23 @@ $transfers_result = $conn->query($transfers_query);
             <div class="col-12">
                 <div class="card">
                     <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div class="me-3">
-                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary" style="width: 50px; height: 50px;">
-                                    <i class="bi bi-arrow-left-right text-white" style="font-size: 1.2rem;"></i>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-arrow-left-right text-white" style="font-size: 1.2rem;"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 fw-semibold"><?php echo $t['transfers']; ?></h4>
+                                    <p class="text-muted mb-0">View all transfer history and manage completed transfers</p>
                                 </div>
                             </div>
-                            <div>
-                                <h4 class="mb-1 fw-semibold"><?php echo $t['transfers']; ?></h4>
-                                <p class="text-muted mb-0">View all transfer history and manage completed transfers</p>
-                            </div>
+                            <form method="GET" action="transfers.php">
+                                <select class="form-select" name="year" onchange="this.form.submit()">
+                                    <?php echo renderYearOptions($availableYears, $selectedYear); ?>
+                                </select>
+                            </form>
                         </div>
                     </div>
                 </div>

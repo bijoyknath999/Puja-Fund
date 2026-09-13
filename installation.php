@@ -90,8 +90,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS settings (
+                setting_key VARCHAR(50) PRIMARY KEY,
+                setting_value VARCHAR(255) NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS api_tokens (
+                token VARCHAR(64) PRIMARY KEY,
+                user_id INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ";
-            
+
             if ($conn->multi_query($sql)) {
                 do {
                     if ($result = $conn->store_result()) {
@@ -99,11 +113,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } while ($conn->next_result());
             }
-            
+
             if ($conn->error) {
                 throw new Exception("Error creating tables: " . $conn->error);
             }
-            
+
+            // Seed the active year setting (defaults to the year the install happens)
+            $currentYear = date('Y');
+            $conn->query("INSERT IGNORE INTO settings (setting_key, setting_value) VALUES ('active_year', '{$currentYear}')");
+
             $conn->close();
             header('Location: installation.php?step=3');
             exit;

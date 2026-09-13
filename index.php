@@ -3,12 +3,15 @@ include 'auth.php';
 include 'db.php';
 include 'lang.php';
 include 'categories.php';
+include 'year_helper.php';
 
 $lang = getCurrentLanguage();
 $t = getTranslations($lang);
 
+$activeYear = getActiveYear($conn);
+
 // Handle year filtering
-$selectedYear = $_GET['year'] ?? date('Y');
+$selectedYear = $_GET['year'] ?? $activeYear;
 
 // Handle transaction form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -40,36 +43,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['error'] = $t['transfer_failed'] . ": " . $e->getMessage();
         }
     } else {
-        // Check balance for expense transactions
-        if ($type == 'expense') {
-            // Get user's current balance
-            $user_id = $_SESSION['user']['id'];
-            $balanceStmt = $conn->prepare("
-                SELECT 
-                    COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) as collections,
-                    COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) as transfer_in,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as transfer_out
-                FROM transactions 
-                WHERE added_by = ?
-            ");
-            $balanceStmt->bind_param('i', $user_id);
-            $balanceStmt->execute();
-            $balanceData = $balanceStmt->get_result()->fetch_assoc();
-            
-            $current_balance = $balanceData['collections'] + $balanceData['transfer_in'] - $balanceData['transfer_out'] - $balanceData['expenses'];
-            
-            if ($current_balance < $amount) {
-                $_SESSION['error'] = "Insufficient balance! Your current balance is ৳" . number_format($current_balance, 2) . " but you're trying to add an expense of ৳" . number_format($amount, 2);
-                header('Location: index.php');
-                exit();
-            }
-        }
-        
         // Handle regular transaction
         $stmt = $conn->prepare("INSERT INTO transactions (type, description, amount, date, category, added_by) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param('ssdssi', $type, $description, $amount, $date, $category, $_SESSION['user']['id']);
         $stmt->execute();
+
+        // Expenses are allowed to take the fund negative (the UI confirms this before submitting);
+        // just surface it afterwards so it isn't a silent surprise.
+        if ($type == 'expense') {
+            $expenseYear = intval(substr($date, 0, 4));
+            $fundBalanceStmt = $conn->prepare("
+                SELECT
+                    COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
+                    COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as balance
+                FROM transactions
+                WHERE YEAR(date) = ?
+            ");
+            $fundBalanceStmt->bind_param('i', $expenseYear);
+            $fundBalanceStmt->execute();
+            $new_balance = $fundBalanceStmt->get_result()->fetch_assoc()['balance'];
+
+            if ($new_balance < 0) {
+                $_SESSION['warning'] = "Note: the fund balance for {$expenseYear} is now negative (৳" . number_format($new_balance, 2) . ").";
+            }
+        }
     }
     
     header('Location: index.php');
@@ -143,9 +140,7 @@ $recentStmt->execute();
 $recentTransactions = $recentStmt->get_result();
 
 // Get available years for filter dropdown
-$yearsStmt = $conn->prepare("SELECT DISTINCT YEAR(date) as year FROM transactions ORDER BY year DESC");
-$yearsStmt->execute();
-$availableYears = $yearsStmt->get_result();
+$availableYears = getAvailableYears($conn, $activeYear);
 
 // Get user count
 $userCountStmt = $conn->prepare("SELECT COUNT(*) as total FROM users");
@@ -182,6 +177,7 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <title><?php echo $t['page_title_dashboard']; ?></title>
   <style>
@@ -405,6 +401,11 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
               <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+              <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
+            </a>
+          </li>
           <?php endif; ?>
         </ul>
         <ul class="navbar-nav">
@@ -430,7 +431,28 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
   <!-- Main Content -->
   <div class="main-content">
     <div class="container py-4">
-      
+
+      <?php if (isset($_SESSION['success'])): ?>
+      <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><?php echo htmlspecialchars($_SESSION['success']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      <?php unset($_SESSION['success']); endif; ?>
+
+      <?php if (isset($_SESSION['error'])): ?>
+      <div class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i><?php echo htmlspecialchars($_SESSION['error']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      <?php unset($_SESSION['error']); endif; ?>
+
+      <?php if (isset($_SESSION['warning'])): ?>
+      <div class="alert alert-warning alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i><?php echo htmlspecialchars($_SESSION['warning']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      <?php unset($_SESSION['warning']); endif; ?>
+
       <!-- Welcome Section -->
       <div class="welcome-section">
         <div class="row align-items-center">
@@ -450,14 +472,7 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
                   <i class="bi bi-calendar me-1"></i><?php echo $t['year']; ?>
                 </label>
                 <select class="form-select" id="yearSelect" name="year" onchange="this.form.submit()">
-                  <?php while($yearRow = $availableYears->fetch_assoc()): ?>
-                    <option value="<?php echo $yearRow['year']; ?>" <?php echo $yearRow['year'] == $selectedYear ? 'selected' : ''; ?>>
-                      <?php echo $yearRow['year']; ?>
-                    </option>
-                  <?php endwhile; ?>
-                  <?php if($availableYears->num_rows == 0): ?>
-                    <option value="<?php echo date('Y'); ?>" selected><?php echo date('Y'); ?></option>
-                  <?php endif; ?>
+                  <?php echo renderYearOptions($availableYears, $selectedYear); ?>
                 </select>
               </div>
             </form>
@@ -835,7 +850,7 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
                 <label for="quickDate" class="form-label fw-semibold">
                   <i class="bi bi-calendar me-2"></i>Date
                 </label>
-                <input type="date" class="form-control" id="quickDate" name="date" value="<?php echo date('Y-m-d'); ?>" required>
+                <input type="date" class="form-control" id="quickDate" name="date" value="<?php echo getDefaultDateForYear($activeYear); ?>" required>
               </div>
               
               <div class="col-md-6" id="quickCategoryGroup" style="display: none;">
@@ -886,25 +901,8 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
       const amountInput = document.getElementById('quickAmount');
       const form = document.querySelector('#quickAddModal form');
       
-      // User's current balance (from PHP)
-      const userBalance = <?php 
-        // Calculate current user balance for JavaScript validation
-        $user_id = $_SESSION['user']['id'];
-        $balanceStmt = $conn->prepare("
-            SELECT 
-                COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) as collections,
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses,
-                COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) as transfer_in,
-                COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as transfer_out
-            FROM transactions 
-            WHERE added_by = ?
-        ");
-        $balanceStmt->bind_param('i', $user_id);
-        $balanceStmt->execute();
-        $balanceData = $balanceStmt->get_result()->fetch_assoc();
-        $js_balance = $balanceData['collections'] + $balanceData['transfer_in'] - $balanceData['transfer_out'] - $balanceData['expenses'];
-        echo number_format($js_balance, 2, '.', '');
-      ?>;
+      // Total fund balance for the active year (from PHP) - matches the dashboard total
+      const fundBalance = <?php echo number_format($balance, 2, '.', ''); ?>;
       
       function toggleFormFields() {
         const selectedType = document.querySelector('input[name="type"]:checked').value;
@@ -924,36 +922,25 @@ $progress = $totCol > 0 ? min(100, ($totCol / max($totCol, 10000)) * 100) : 0;
         }
       }
       
-      // Validate expense amount against balance
-      function validateExpenseAmount() {
+      // Warn (don't block) if an expense would take the fund balance negative
+      function confirmIfNegative(e) {
         const selectedType = document.querySelector('input[name="type"]:checked').value;
         const amount = parseFloat(amountInput.value) || 0;
-        
-        if (selectedType === 'expense' && amount > userBalance) {
-          amountInput.setCustomValidity(`Insufficient balance! Your current balance is ৳${userBalance.toFixed(2)} but you're trying to add an expense of ৳${amount.toFixed(2)}`);
-          return false;
-        } else {
-          amountInput.setCustomValidity('');
-          return true;
+
+        if (selectedType === 'expense' && amount > fundBalance) {
+          const resultingBalance = (fundBalance - amount).toFixed(2);
+          const ok = confirm(`This expense will take the fund balance negative (৳${resultingBalance}). Do you want to continue?`);
+          if (!ok) {
+            e.preventDefault();
+          }
         }
       }
-      
-      // Form validation on submit
-      form.addEventListener('submit', function(e) {
-        if (!validateExpenseAmount()) {
-          e.preventDefault();
-          amountInput.reportValidity();
-        }
-      });
-      
-      // Real-time validation on amount input
-      amountInput.addEventListener('input', validateExpenseAmount);
-      
+
+      // Confirm on submit
+      form.addEventListener('submit', confirmIfNegative);
+
       typeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-          toggleFormFields();
-          validateExpenseAmount();
-        });
+        radio.addEventListener('change', toggleFormFields);
       });
       
       toggleFormFields();

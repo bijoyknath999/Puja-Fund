@@ -1,0 +1,88 @@
+/* Shared mobile-friendly styles for the Puja Fund app.
+   Linked from every page so mobile tweaks live in one place. */
+
+@media (max-width: 576px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  h4 {
+    font-size: 1.1rem;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    min-width: 36px;
+  }
+
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  /* Stack any row of buttons/filters to full width */
+  .d-flex.gap-2.justify-content-end.flex-wrap > * {
+    flex: 1 1 auto;
+  }
+}
+
+/* Responsive "card" tables: add data-label to each <td> and this turns
+   rows into stacked, labeled blocks below 576px instead of a cramped
+   scrolling table. Wrap the table in .table-cards-mobile to opt in. */
+@media (max-width: 576px) {
+  .table-cards-mobile thead {
+    display: none;
+  }
+
+  .table-cards-mobile,
+  .table-cards-mobile tbody,
+  .table-cards-mobile tr,
+  .table-cards-mobile td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-cards-mobile tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  .table-cards-mobile td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: right;
+    border: none;
+    padding: 0.4rem 0;
+  }
+
+  .table-cards-mobile td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6c757d;
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .table-cards-mobile td.table-cards-actions {
+    justify-content: flex-end;
+  }
+
+  .table-cards-mobile td.table-cards-actions::before {
+    content: none;
+  }
+}

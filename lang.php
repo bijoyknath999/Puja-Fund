@@ -19,6 +19,7 @@ $translations = [
         'transfers' => 'Transfers',
         'users' => 'Users',
         'reports' => 'Reports',
+        'settings' => 'Settings',
         'logout' => 'Logout',
         
         // Login Page
@@ -170,7 +171,19 @@ $translations = [
         'no_transactions_period' => 'No transactions were recorded in the selected date range.',
         'back_to_dashboard' => 'Back to Dashboard',
         'page_title_reports' => 'Reports - Puja Fund',
-        
+
+        // Settings
+        'settings' => 'Settings',
+        'page_title_settings' => 'Settings - Puja Fund',
+        'active_year' => 'Active Year',
+        'active_year_desc' => 'New transactions default to this year, and this is the year shown by default across the app.',
+        'change_active_year' => 'Change Active Year',
+        'start_new_year' => 'Start a New Year',
+        'start_new_year_desc' => 'Enter a year that has not been used before to start fresh (e.g. begin 2026 while keeping all 2025 data intact).',
+        'new_year_placeholder' => 'e.g. 2026',
+        'save_settings' => 'Save',
+        'settings_updated' => 'Active year updated successfully.',
+
         // Edit Transaction
         'edit_transaction' => 'Edit Transaction',
         'update_transaction_details' => 'Update transaction details',
@@ -236,6 +249,7 @@ $translations = [
         'transfers' => 'স্থানান্তর',
         'users' => 'ব্যবহারকারী',
         'reports' => 'রিপোর্ট',
+        'settings' => 'সেটিংস',
         'logout' => 'লগআউট',
         
         // Login Page
@@ -389,7 +403,19 @@ $translations = [
         'no_transactions_period' => 'নির্বাচিত সময়ে কোন লেনদেন রেকর্ড করা হয়নি।',
         'back_to_dashboard' => 'ড্যাশবোর্ডে ফিরুন',
         'page_title_reports' => 'রিপোর্ট - পূজা ফান্ড',
-        
+
+        // Settings
+        'settings' => 'সেটিংস',
+        'page_title_settings' => 'সেটিংস - পূজা ফান্ড',
+        'active_year' => 'সক্রিয় বছর',
+        'active_year_desc' => 'নতুন লেনদেন ডিফল্টভাবে এই বছরে যোগ হবে, এবং পুরো অ্যাপে ডিফল্টভাবে এই বছরের তথ্য দেখানো হবে।',
+        'change_active_year' => 'সক্রিয় বছর পরিবর্তন করুন',
+        'start_new_year' => 'নতুন বছর শুরু করুন',
+        'start_new_year_desc' => 'আগে ব্যবহার হয়নি এমন একটি বছর লিখুন নতুনভাবে শুরু করতে (যেমন, ২০২৫ সালের সব তথ্য অক্ষত রেখে ২০২৬ শুরু করুন)।',
+        'new_year_placeholder' => 'যেমন ২০২৬',
+        'save_settings' => 'সংরক্ষণ করুন',
+        'settings_updated' => 'সক্রিয় বছর সফলভাবে আপডেট হয়েছে।',
+
         // Edit Transaction
         'edit_transaction' => 'লেনদেন সম্পাদনা',
         'update_transaction_details' => 'লেনদেনের বিস্তারিত আপডেট করুন',

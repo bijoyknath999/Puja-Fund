@@ -90,6 +90,7 @@ $balance = $totalCollection - $totalExpense;
     <title><?php echo $t['page_title_reports']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
     <style>
         .language-switcher {
             display: flex;
@@ -391,6 +392,11 @@ $balance = $totalCollection - $totalExpense;
                     <li class="nav-item">
                         <a class="nav-link active fw-semibold <?php echo getLangClass($lang); ?>" href="report.php">
                             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+                            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
                         </a>
                     </li>
                     <?php endif; ?>

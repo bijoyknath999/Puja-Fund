@@ -1,0 +1,11 @@
+# Local tooling / editor
+.claude/
+.DS_Store
+.vscode/
+.idea/
+
+# PHP
+*.log
+
+# Local database dumps
+*.sql.bak

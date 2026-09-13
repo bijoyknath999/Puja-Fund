@@ -40,55 +40,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'Transfer transactions cannot be edited. Please delete and create a new transfer if needed.';
         $messageType = 'error';
     } elseif ($description && $amount > 0 && $date) {
-        // Check balance for expense transactions
-        if ($type == 'expense') {
-            // Get user's current balance (excluding the current transaction being edited)
-            $user_id = $tx['added_by'];
-            $balanceStmt = $conn->prepare("
-                SELECT 
-                    COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) as collections,
-                    COALESCE(SUM(CASE WHEN type = 'expense' AND id != ? THEN amount ELSE 0 END), 0) as expenses,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) as transfer_in,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as transfer_out
-                FROM transactions 
-                WHERE added_by = ?
-            ");
-            $balanceStmt->bind_param('ii', $id, $user_id);
-            $balanceStmt->execute();
-            $balanceData = $balanceStmt->get_result()->fetch_assoc();
-            
-            $current_balance = $balanceData['collections'] + $balanceData['transfer_in'] - $balanceData['transfer_out'] - $balanceData['expenses'];
-            
-            if ($current_balance < $amount) {
-                $message = "Insufficient balance! User's current balance is ৳" . number_format($current_balance, 2) . " but you're trying to set an expense of ৳" . number_format($amount, 2);
-                $messageType = 'error';
-            } else {
-                $u = $conn->prepare("UPDATE transactions SET type=?, description=?, amount=?, date=?, category=? WHERE id=?");
-                $u->bind_param('ssdssi', $type, $description, $amount, $date, $category, $id);
-                if ($u->execute()) {
-                    header('Location: transactions.php?updated=1');
-                    exit();
-                } else {
-                    $message = 'Error updating transaction.';
-                    $messageType = 'error';
+        $u = $conn->prepare("UPDATE transactions SET type=?, description=?, amount=?, date=?, category=? WHERE id=?");
+        $u->bind_param('ssdssi', $type, $description, $amount, $date, $category, $id);
+        if ($u->execute()) {
+            // Expenses are allowed to take the fund negative (the UI confirms this before submitting);
+            // just surface it afterwards so it isn't a silent surprise.
+            if ($type == 'expense') {
+                $expenseYear = intval(substr($date, 0, 4));
+                $fundBalanceStmt = $conn->prepare("
+                    SELECT
+                        COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
+                        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as balance
+                    FROM transactions
+                    WHERE YEAR(date) = ?
+                ");
+                $fundBalanceStmt->bind_param('i', $expenseYear);
+                $fundBalanceStmt->execute();
+                $new_balance = $fundBalanceStmt->get_result()->fetch_assoc()['balance'];
+
+                if ($new_balance < 0) {
+                    $_SESSION['warning'] = "Note: the fund balance for {$expenseYear} is now negative (৳" . number_format($new_balance, 2) . ").";
                 }
             }
+            header('Location: transactions.php?updated=1');
+            exit();
         } else {
-            $u = $conn->prepare("UPDATE transactions SET type=?, description=?, amount=?, date=?, category=? WHERE id=?");
-            $u->bind_param('ssdssi', $type, $description, $amount, $date, $category, $id);
-            if ($u->execute()) {
-                header('Location: transactions.php?updated=1');
-                exit();
-            } else {
-                $message = 'Error updating transaction.';
-                $messageType = 'error';
-            }
+            $message = 'Error updating transaction.';
+            $messageType = 'error';
         }
     } else {
         $message = 'Please fill all required fields.';
         $messageType = 'error';
     }
 }
+
+// Fund balance for this transaction's year, excluding its own current amount,
+// used to warn (not block) if editing it to a larger expense would go negative
+$txYear = intval(substr($tx['date'], 0, 4));
+$editBalanceStmt = $conn->prepare("
+    SELECT
+        COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN type = 'expense' AND id != ? THEN amount ELSE 0 END), 0) as balance
+    FROM transactions
+    WHERE YEAR(date) = ?
+");
+$editBalanceStmt->bind_param('ii', $id, $txYear);
+$editBalanceStmt->execute();
+$editBalanceExcludingSelf = $editBalanceStmt->get_result()->fetch_assoc()['balance'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <title><?php echo $t['page_title_edit_transaction']; ?></title>
   <style>
@@ -203,6 +202,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <li class="nav-item">
           <a class="nav-link <?php echo getLangClass($lang); ?>" href="report.php">
             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
           </a>
         </li>
         <?php endif; ?>
@@ -375,6 +379,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.getElementById('category').value = '';
       }
     });
+  });
+
+  // Warn (don't block) if saving this as an expense would take the fund balance negative
+  document.querySelector('form').addEventListener('submit', function(e) {
+    const selectedType = document.querySelector('input[name="type"]:checked').value;
+    const amount = parseFloat(document.getElementById('amount').value) || 0;
+    const fundBalance = <?php echo number_format($editBalanceExcludingSelf, 2, '.', ''); ?>;
+
+    if (selectedType === 'expense' && amount > fundBalance) {
+      const resultingBalance = (fundBalance - amount).toFixed(2);
+      const ok = confirm(`This expense will take the fund balance negative (৳${resultingBalance}). Do you want to continue?`);
+      if (!ok) {
+        e.preventDefault();
+      }
+    }
   });
 </script>
 </body>

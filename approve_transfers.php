@@ -110,6 +110,7 @@ $pending_transfers = $conn->query($pending_query);
     <title>Approve Transfers - <?php echo $t['app_name']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -242,6 +243,11 @@ $pending_transfers = $conn->query($pending_query);
         <li class="nav-item">
           <a class="nav-link <?php echo getLangClass($lang); ?>" href="report.php">
             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
           </a>
         </li>
         <?php endif; ?>

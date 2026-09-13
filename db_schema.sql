@@ -52,6 +52,25 @@ CREATE TABLE `transfers` (
   CONSTRAINT `transfers_amount_positive` CHECK (`amount` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE `settings` (
+  `setting_key` varchar(50) NOT NULL,
+  `setting_value` varchar(255) NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES ('active_year', YEAR(CURDATE()));
+
+CREATE TABLE `api_tokens` (
+  `token` varchar(64) NOT NULL,
+  `user_id` int NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expires_at` timestamp NOT NULL,
+  PRIMARY KEY (`token`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `api_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Create indexes for better performance
 CREATE INDEX `idx_transactions_date_type` ON `transactions` (`date`, `type`);
 CREATE INDEX `idx_transactions_created_at` ON `transactions` (`created_at`);

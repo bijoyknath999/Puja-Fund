@@ -2,12 +2,15 @@
 include 'auth.php';
 include 'db.php';
 include 'lang.php';
+include 'year_helper.php';
 
 // Check if user is manager
 if($_SESSION['user']['role'] != 'manager') {
     header('Location: index.php');
     exit();
 }
+
+$activeYear = getActiveYear($conn);
 
 $message = '';
 $messageType = '';
@@ -80,14 +83,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 // Get filter parameters
-$selectedYear = $_GET['year'] ?? date('Y');
+$selectedYear = $_GET['year'] ?? $activeYear;
 $from_date = $_GET['from'] ?? '';
 $to_date = $_GET['to'] ?? '';
 
 // Get available years for dropdown
-$yearsStmt = $conn->prepare("SELECT DISTINCT YEAR(date) as year FROM transactions ORDER BY year DESC");
-$yearsStmt->execute();
-$years = $yearsStmt->get_result();
+$years = getAvailableYears($conn, $activeYear);
 
 // Build date filter conditions
 $dateCondition = "";
@@ -140,6 +141,7 @@ $users = $usersStmt->get_result();
     <title><?php echo $t['page_title_users']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -266,6 +268,9 @@ $users = $usersStmt->get_result();
         <li class="nav-item">
           <a class="nav-link <?php echo getLangClass($lang); ?>" href="report.php"><i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?></a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php"><i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?></a>
+        </li>
         <?php endif; ?>
       </ul>
       <ul class="navbar-nav">
@@ -350,14 +355,7 @@ $users = $usersStmt->get_result();
                     <i class="bi bi-calendar3 me-1"></i><?php echo $t['year']; ?>
                   </label>
                   <select class="form-select" id="year" name="year">
-                    <?php 
-                      $years->data_seek(0); // Reset result pointer
-                      while($yearRow = $years->fetch_assoc()): 
-                    ?>
-                    <option value="<?php echo $yearRow['year']; ?>" <?php echo $selectedYear == $yearRow['year'] ? 'selected' : ''; ?>>
-                      <?php echo $yearRow['year']; ?>
-                    </option>
-                    <?php endwhile; ?>
+                    <?php echo renderYearOptions($years, $selectedYear); ?>
                   </select>
                 </div>
                 <div class="col-12">

@@ -3,15 +3,18 @@ include 'auth.php';
 include 'db.php';
 include 'lang.php';
 include 'categories.php';
+include 'year_helper.php';
 
 $lang = getCurrentLanguage();
 $t = getTranslations($lang);
+
+$activeYear = getActiveYear($conn);
 
 // Get filter parameters
 $from_date = $_GET['from'] ?? '';
 $to_date = $_GET['to'] ?? '';
 $type = $_GET['type'] ?? '';
-$selectedYear = $_GET['year'] ?? date('Y');
+$selectedYear = $_GET['year'] ?? $activeYear;
 
 // Build WHERE clause for filters
 $whereClause = "WHERE added_by = ?";
@@ -105,11 +108,18 @@ $transferOut = $transferOutStmt->get_result()->fetch_assoc()['total'];
 $transferBalance = $transferIn - $transferOut;
 $balance = $totCol - $totExp + $transferBalance;
 
-// Get available years for dropdown
-$yearsStmt = $conn->prepare("SELECT DISTINCT YEAR(date) as year FROM transactions WHERE added_by = ? ORDER BY year DESC");
+// Get available years for dropdown (this user's own years, plus the active year)
+$years = [];
+$yearsStmt = $conn->prepare("SELECT DISTINCT YEAR(date) as year FROM transactions WHERE added_by = ?");
 $yearsStmt->bind_param('i', $_SESSION['user']['id']);
 $yearsStmt->execute();
-$years = $yearsStmt->get_result();
+$yearsResult = $yearsStmt->get_result();
+while ($row = $yearsResult->fetch_assoc()) {
+    $years[intval($row['year'])] = true;
+}
+$years[intval($activeYear)] = true;
+$years = array_keys($years);
+rsort($years);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -118,6 +128,7 @@ $years = $yearsStmt->get_result();
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <title><?php echo $t['my_profile']; ?> - <?php echo $t['app_name']; ?></title>
   <style>
@@ -272,6 +283,11 @@ $years = $yearsStmt->get_result();
         <li class="nav-item">
           <a class="nav-link <?php echo getLangClass($lang); ?>" href="report.php">
             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
           </a>
         </li>
         <?php endif; ?>
@@ -442,11 +458,7 @@ $years = $yearsStmt->get_result();
                     <i class="bi bi-calendar3 me-1"></i><?php echo $t['year']; ?>
                   </label>
                   <select class="form-select" id="year" name="year">
-                    <?php while($yearRow = $years->fetch_assoc()): ?>
-                    <option value="<?php echo $yearRow['year']; ?>" <?php echo $selectedYear == $yearRow['year'] ? 'selected' : ''; ?>>
-                      <?php echo $yearRow['year']; ?>
-                    </option>
-                    <?php endwhile; ?>
+                    <?php echo renderYearOptions($years, $selectedYear); ?>
                   </select>
                 </div>
                 <div class="col-12">

@@ -3,15 +3,20 @@ include 'auth.php';
 include 'db.php';
 include 'lang.php';
 include 'categories.php';
+include 'year_helper.php';
 
 $lang = getCurrentLanguage();
 $t = getTranslations($lang);
+
+$activeYear = getActiveYear($conn);
 
 // Handle filtering
 $from = $_GET['from'] ?? '';
 $to = $_GET['to'] ?? '';
 $filterUser = $_GET['user'] ?? '';
 $filterType = $_GET['type'] ?? '';
+// Only apply the year filter when no explicit date range is set
+$selectedYear = $_GET['year'] ?? $activeYear;
 
 // Helper function to get user name
 function getUserName($user_id, $conn) {
@@ -73,37 +78,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['error'] = $t['transfer_failed'] . ": " . $e->getMessage();
         }
     } else {
-        // Check balance for expense transactions
-        if ($type == 'expense') {
-            // Get user's current balance
-            $balanceStmt = $conn->prepare("
-                SELECT 
-                    COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) as collections,
-                    COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expenses,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) as transfer_in,
-                    COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as transfer_out
-                FROM transactions 
-                WHERE added_by = ?
-            ");
-            $balanceStmt->bind_param('i', $user_id);
-            $balanceStmt->execute();
-            $balanceData = $balanceStmt->get_result()->fetch_assoc();
-            
-            $current_balance = $balanceData['collections'] + $balanceData['transfer_in'] - $balanceData['transfer_out'] - $balanceData['expenses'];
-            
-            if ($current_balance < $amount) {
-                $_SESSION['error'] = "Insufficient balance! Your current balance is ৳" . number_format($current_balance, 2) . " but you're trying to add an expense of ৳" . number_format($amount, 2);
-                header('Location: transactions.php');
-                exit();
-            }
-        }
-        
         // Handle regular transaction
         $stmt = $conn->prepare("INSERT INTO transactions (type, amount, description, category, date, added_by) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("sdsssi", $type, $amount, $description, $category, $date, $user_id);
-        
+
         if ($stmt->execute()) {
             $_SESSION['success'] = $t['transaction_added_success'];
+
+            // Expenses are allowed to take the fund negative (the UI confirms this before submitting);
+            // just surface it afterwards so it isn't a silent surprise.
+            if ($type == 'expense') {
+                $expenseYear = intval(substr($date, 0, 4));
+                $fundBalanceStmt = $conn->prepare("
+                    SELECT
+                        COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
+                        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as balance
+                    FROM transactions
+                    WHERE YEAR(date) = ?
+                ");
+                $fundBalanceStmt->bind_param('i', $expenseYear);
+                $fundBalanceStmt->execute();
+                $new_balance = $fundBalanceStmt->get_result()->fetch_assoc()['balance'];
+
+                if ($new_balance < 0) {
+                    $_SESSION['warning'] = "Note: the fund balance for {$expenseYear} is now negative (৳" . number_format($new_balance, 2) . ").";
+                }
+            }
         } else {
             $_SESSION['error'] = $t['error_adding_transaction'] . ": " . $conn->error;
         }
@@ -123,6 +123,11 @@ if ($from && $to) {
     $params[] = $from;
     $params[] = $to;
     $paramTypes .= 'ss';
+} else {
+    // No explicit date range chosen - default to the selected/active year
+    $whereConditions[] = "YEAR(t.date) = ?";
+    $params[] = $selectedYear;
+    $paramTypes .= 'i';
 }
 
 if ($filterUser) {
@@ -172,6 +177,21 @@ if (!empty($params)) {
 // Get all users for filter dropdown
 $usersQuery = "SELECT id, name FROM users ORDER BY name";
 $usersResult = $conn->query($usersQuery);
+
+// Get available years for the year selector
+$availableYears = getAvailableYears($conn, $activeYear);
+
+// Fund balance for the active year, used to warn (not block) when an expense would go negative
+$activeYearBalanceStmt = $conn->prepare("
+    SELECT
+        COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as balance
+    FROM transactions
+    WHERE YEAR(date) = ?
+");
+$activeYearBalanceStmt->bind_param('i', $activeYear);
+$activeYearBalanceStmt->execute();
+$activeYearBalance = $activeYearBalanceStmt->get_result()->fetch_assoc()['balance'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -180,6 +200,7 @@ $usersResult = $conn->query($usersQuery);
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <title><?php echo $t['page_title_transactions']; ?></title>
   <style>
@@ -312,6 +333,11 @@ $usersResult = $conn->query($usersQuery);
             <i class="bi bi-file-earmark-text me-1"></i><?php echo $t['reports']; ?>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link <?php echo getLangClass($lang); ?>" href="settings.php">
+            <i class="bi bi-gear me-1"></i><?php echo $t['settings']; ?>
+          </a>
+        </li>
         <?php endif; ?>
       </ul>
       <ul class="navbar-nav">
@@ -358,6 +384,13 @@ $usersResult = $conn->query($usersQuery);
             </div>
             <div class="col-md-4 text-end">
               <div class="d-flex gap-2 justify-content-end flex-wrap">
+                <?php if (!$from && !$to): ?>
+                <form method="GET" action="transactions.php" class="d-inline-block">
+                  <select class="form-select" name="year" onchange="this.form.submit()" style="width: auto;">
+                    <?php echo renderYearOptions($availableYears, $selectedYear); ?>
+                  </select>
+                </form>
+                <?php endif; ?>
                 <button class="btn btn-outline-primary <?php echo getLangClass($lang); ?>" data-bs-toggle="collapse" data-bs-target="#filterSection">
                   <i class="bi bi-funnel me-2"></i><?php echo $t['filter']; ?>
                 </button>
@@ -398,6 +431,18 @@ $usersResult = $conn->query($usersQuery);
     </div>
   </div>
   <?php unset($_SESSION['error']); endif; ?>
+
+  <?php if(isset($_SESSION['warning'])): ?>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-warning alert-dismissible fade show">
+        <i class="bi bi-exclamation-circle me-2"></i>
+        <?php echo htmlspecialchars($_SESSION['warning']); ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  </div>
+  <?php unset($_SESSION['warning']); endif; ?>
 
   <!-- Filter Section -->
   <div class="row mb-4">
@@ -541,7 +586,7 @@ $usersResult = $conn->query($usersQuery);
                 <label for="date" class="form-label fw-semibold <?php echo getLangClass($lang); ?>">
                   <i class="bi bi-calendar me-2"></i><?php echo $t['date']; ?>
                 </label>
-                <input type="date" class="form-control" id="date" name="date" value="<?php echo date('Y-m-d'); ?>" required>
+                <input type="date" class="form-control" id="date" name="date" value="<?php echo getDefaultDateForYear($activeYear); ?>" required>
               </div>
             </div>
           </div>
@@ -562,7 +607,7 @@ $usersResult = $conn->query($usersQuery);
       <div class="card">
         <div class="card-body p-0">
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0 table-cards-mobile">
               <thead>
                 <tr>
                   <th class="<?php echo getLangClass($lang); ?>"><?php echo $t['date']; ?></th>
@@ -576,25 +621,25 @@ $usersResult = $conn->query($usersQuery);
               <tbody>
               <?php while ($row = $res->fetch_assoc()): ?>
                 <tr>
-                  <td>
+                  <td data-label="<?php echo $t['date']; ?>">
                     <span class="fw-semibold"><?php echo date('M j, Y', strtotime($row['date'])); ?></span>
                   </td>
-                  <td>
-                    <span class="badge <?php 
-                      echo $row['type'] == 'collection' ? 'bg-success' : 
-                           ($row['type'] == 'expense' ? 'bg-danger' : 'bg-primary'); 
+                  <td data-label="<?php echo $t['transaction_type']; ?>">
+                    <span class="badge <?php
+                      echo $row['type'] == 'collection' ? 'bg-success' :
+                           ($row['type'] == 'expense' ? 'bg-danger' : 'bg-primary');
                     ?> <?php echo getLangClass($lang); ?>">
-                      <i class="bi bi-<?php 
-                        echo $row['type'] == 'collection' ? 'arrow-down' : 
-                             ($row['type'] == 'expense' ? 'arrow-up' : 'arrow-left-right'); 
+                      <i class="bi bi-<?php
+                        echo $row['type'] == 'collection' ? 'arrow-down' :
+                             ($row['type'] == 'expense' ? 'arrow-up' : 'arrow-left-right');
                       ?> me-1"></i>
-                      <?php 
-                        echo $row['type'] == 'collection' ? $t['collection'] : 
-                             ($row['type'] == 'expense' ? $t['expense'] : $t['transfer']); 
+                      <?php
+                        echo $row['type'] == 'collection' ? $t['collection'] :
+                             ($row['type'] == 'expense' ? $t['expense'] : $t['transfer']);
                       ?>
                     </span>
                   </td>
-                  <td><?php 
+                  <td data-label="<?php echo $t['description']; ?>"><?php
                     if ($row['type'] == 'transfer' && isset($row['display_description'])) {
                       echo htmlspecialchars($row['display_description']); // Use formatted transfer description
                     } elseif ($row['type'] == 'transfer' && (strpos($row['description'], 'Transfer to') === 0 || strpos($row['description'], 'Transfer from') === 0)) {
@@ -603,13 +648,13 @@ $usersResult = $conn->query($usersQuery);
                       echo htmlspecialchars($row['description']); // Escape other descriptions
                     }
                   ?></td>
-                  <td class="text-end fw-semibold <?php 
-                    echo $row['type'] == 'collection' ? 'text-success' : 
-                         ($row['type'] == 'expense' ? 'text-danger' : 'text-primary'); 
+                  <td data-label="<?php echo $t['amount']; ?>" class="text-end fw-semibold <?php
+                    echo $row['type'] == 'collection' ? 'text-success' :
+                         ($row['type'] == 'expense' ? 'text-danger' : 'text-primary');
                   ?>">
                     ৳<?php echo number_format($row['amount'], 2); ?>
                   </td>
-                  <td>
+                  <td data-label="<?php echo $t['added_by']; ?>">
                     <div class="d-flex align-items-center">
                       <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
                         <?php echo strtoupper(substr($row['added_by_name'], 0, 2)); ?>
@@ -618,7 +663,7 @@ $usersResult = $conn->query($usersQuery);
                     </div>
                   </td>
                   <?php if ($_SESSION['user']['role'] === 'manager'): ?>
-                  <td>
+                  <td data-label="<?php echo $t['actions']; ?>" class="table-cards-actions">
                     <div class="btn-group btn-group-sm">
                       <a class="btn btn-outline-primary" href="edit.php?id=<?php echo $row['id']; ?>">
                         <i class="bi bi-pencil"></i>
@@ -646,10 +691,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const transferUserGroup = document.getElementById('transferUserGroup');
     const categorySelect = document.getElementById('category');
     const transferUserSelect = document.getElementById('transferUser');
+    const amountInput = document.getElementById('amount');
+    const addForm = document.querySelector('#addTransactionModal form');
+    const fundBalance = <?php echo number_format($activeYearBalance, 2, '.', ''); ?>;
 
     function toggleFormFields() {
         const selectedType = document.querySelector('input[name="type"]:checked').value;
-        
+
         if (selectedType === 'expense') {
             categoryGroup.style.display = 'block';
             transferUserGroup.style.display = 'none';
@@ -668,6 +716,22 @@ document.addEventListener('DOMContentLoaded', function() {
     typeRadios.forEach(radio => {
         radio.addEventListener('change', toggleFormFields);
     });
+
+    // Warn (don't block) if an expense would take the fund balance negative
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            const selectedType = document.querySelector('input[name="type"]:checked').value;
+            const amount = parseFloat(amountInput.value) || 0;
+
+            if (selectedType === 'expense' && amount > fundBalance) {
+                const resultingBalance = (fundBalance - amount).toFixed(2);
+                const ok = confirm(`This expense will take the fund balance negative (৳${resultingBalance}). Do you want to continue?`);
+                if (!ok) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
 
     // Initial call
     toggleFormFields();
