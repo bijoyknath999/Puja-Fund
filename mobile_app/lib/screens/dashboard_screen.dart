@@ -5,6 +5,7 @@ import '../models/dashboard.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/year_provider.dart';
+import '../utils/data_refresh.dart';
 import '../utils/theme.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/transaction_tile.dart';
@@ -59,7 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     if (!mounted) return;
-    _loadDashboard();
+    refreshAllData(context);
   }
 
   @override

@@ -5,6 +5,7 @@ import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/users_provider.dart';
 import '../providers/year_provider.dart';
+import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 
@@ -43,7 +44,8 @@ class _UsersScreenState extends State<UsersScreen> {
       context: context,
       builder: (context) => const _AddUserDialog(),
     );
-    if (created == true) _load();
+    if (!mounted) return;
+    if (created == true) refreshAllData(context);
   }
 
   Future<void> _changeRole(UserWithStats u) async {
@@ -64,7 +66,7 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       await context.read<UsersProvider>().updateRole(u.user.id, newRole);
       if (!mounted) return;
-      _load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
@@ -92,7 +94,7 @@ class _UsersScreenState extends State<UsersScreen> {
     try {
       await context.read<UsersProvider>().delete(u.user.id);
       if (!mounted) return;
-      _load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));

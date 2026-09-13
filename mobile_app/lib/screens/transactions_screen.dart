@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/users_provider.dart';
 import '../providers/year_provider.dart';
+import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 import '../widgets/status_badge.dart';
@@ -75,7 +76,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       MaterialPageRoute(builder: (_) => TransactionFormScreen(initialType: type)),
     );
     if (!mounted) return;
-    if (changed == true) context.read<TransactionsProvider>().load();
+    if (changed == true) refreshAllData(context);
   }
 
   Future<void> _openEdit(TransactionModel tx) async {
@@ -83,7 +84,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       MaterialPageRoute(builder: (_) => TransactionFormScreen(existing: tx)),
     );
     if (!mounted) return;
-    if (changed == true) context.read<TransactionsProvider>().load();
+    if (changed == true) refreshAllData(context);
   }
 
   Future<void> _delete(TransactionModel tx) async {
@@ -107,7 +108,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     try {
       await context.read<TransactionsProvider>().delete(tx.id);
       if (!mounted) return;
-      context.read<TransactionsProvider>().load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));

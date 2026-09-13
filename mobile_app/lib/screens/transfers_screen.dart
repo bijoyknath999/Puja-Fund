@@ -5,6 +5,7 @@ import '../models/transfer.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transfers_provider.dart';
 import '../providers/year_provider.dart';
+import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 import '../widgets/status_badge.dart';
@@ -50,7 +51,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     );
     if (!mounted) return;
     if (changed == true && context.read<AuthProvider>().isManager) {
-      _load();
+      refreshAllData(context);
     }
   }
 
@@ -58,7 +59,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     try {
       await context.read<TransfersProvider>().approve(t.id);
       if (!mounted) return;
-      _load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approve failed: $e')));
@@ -69,7 +70,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     try {
       await context.read<TransfersProvider>().reject(t.id);
       if (!mounted) return;
-      _load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reject failed: $e')));
@@ -97,7 +98,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
     try {
       await context.read<TransfersProvider>().delete(t.id);
       if (!mounted) return;
-      _load();
+      refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));

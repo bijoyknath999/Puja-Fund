@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/year_provider.dart';
+import '../utils/data_refresh.dart';
 import '../utils/theme.dart';
 
 /// Manager-only: view/change the active year and start a new year.
@@ -64,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _message = 'Active year switched to $switchedTo.';
       }
     });
+    if (err == null) refreshAllData(context);
   }
 
   Future<void> _startNewYear() async {
@@ -93,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _newYearController.clear();
       }
     });
+    if (err == null) refreshAllData(context);
   }
 
   @override
