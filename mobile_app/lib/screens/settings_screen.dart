@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/context_ext.dart';
 import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/theme.dart';
 import '../widgets/screen_header.dart';
 
@@ -159,9 +160,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         DropdownButtonFormField<int>(
                           // Guard against `_switchToYear` referring to a year
                           // that no longer appears in `otherYears` (e.g. it
-                          // just became the active year) - DropdownButtonFormField
-                          // asserts if its value doesn't match exactly one item.
-                          initialValue: otherYears.contains(_switchToYear) ? _switchToYear : null,
+                          // just became the active year) - see dropdown_utils.dart.
+                          initialValue: safeDropdownValue(_switchToYear, otherYears),
                           decoration: InputDecoration(labelText: context.tr('change_active_year')),
                           items: [
                             for (final y in otherYears) DropdownMenuItem(value: y, child: Text(y.toString())),

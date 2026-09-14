@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/theme.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/screen_header.dart';
@@ -80,7 +81,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (years.availableYears.isNotEmpty)
                 DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
-                    value: years.selectedYear ?? years.activeYear,
+                    value: safeDropdownValue(years.selectedYear ?? years.activeYear, years.availableYears),
                     dropdownColor: AppColors.gradientEnd,
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                     iconEnabledColor: Colors.white,

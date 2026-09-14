@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/users_provider.dart';
 import '../services/api_exception.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 
@@ -151,7 +152,7 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                       )
                     else
                       DropdownButtonFormField<int>(
-                        initialValue: _selectedUserId,
+                        initialValue: safeDropdownValue(_selectedUserId, recipients.map((u) => u.id)),
                         decoration:
                             InputDecoration(labelText: context.tr('transfer_to'), prefixIcon: const Icon(Icons.person_outline)),
                         items: [

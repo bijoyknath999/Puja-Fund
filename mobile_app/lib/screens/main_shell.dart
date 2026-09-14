@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../l10n/context_ext.dart';
 import '../providers/auth_provider.dart';
+import '../providers/categories_provider.dart';
 import '../utils/theme.dart';
 import '../widgets/language_switcher.dart';
 import 'dashboard_screen.dart';
@@ -58,6 +59,21 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load categories once, as soon as the user is authenticated, instead
+    // of lazily when the expense form first opens - that lazy load left a
+    // window (first frame of TransactionFormScreen) where the category
+    // list was still empty, so an existing expense's category couldn't be
+    // matched and had to fall back to "None" (see dropdown_utils.dart).
+    // Loading here gives it the whole rest of the session to finish before
+    // anyone reaches an edit-expense screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<CategoriesProvider>().loadIfNeeded();
+    });
+  }
 
   List<_Destination> _destinations(BuildContext context, bool isManager) {
     return [

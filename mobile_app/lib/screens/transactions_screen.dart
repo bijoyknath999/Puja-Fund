@@ -9,6 +9,7 @@ import '../providers/transactions_provider.dart';
 import '../providers/users_provider.dart';
 import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 import '../widgets/screen_header.dart';
@@ -304,7 +305,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             Text(context.tr('filter_transactions'), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
-              initialValue: _year,
+              initialValue: safeDropdownValue(_year, widget.availableYears),
               decoration: InputDecoration(labelText: context.tr('year')),
               items: [
                 DropdownMenuItem(value: null, child: Text(context.tr('any'))),
@@ -332,7 +333,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
-              initialValue: _type,
+              initialValue: safeDropdownValue(_type, const ['collection', 'expense', 'transfer']),
               decoration: InputDecoration(labelText: context.tr('type')),
               items: [
                 DropdownMenuItem(value: null, child: Text(context.tr('any'))),
@@ -345,7 +346,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             if (widget.isManager) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<int?>(
-                initialValue: _userId,
+                initialValue: safeDropdownValue(_userId, widget.users.map((u) => u.user.id)),
                 decoration: InputDecoration(labelText: context.tr('user')),
                 items: [
                   DropdownMenuItem(value: null, child: Text(context.tr('everyone'))),

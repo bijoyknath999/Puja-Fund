@@ -8,6 +8,7 @@ import '../providers/dashboard_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../services/api_exception.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 
@@ -253,7 +254,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                     if (_type == 'expense') ...[
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        initialValue: _category,
+                        initialValue: safeDropdownValue(_category, categories.categories.map((c) => c.key)),
                         decoration:
                             InputDecoration(labelText: context.tr('category'), prefixIcon: const Icon(Icons.category_outlined)),
                         items: [

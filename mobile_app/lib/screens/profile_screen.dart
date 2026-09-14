@@ -6,6 +6,7 @@ import '../models/profile_stats.dart';
 import '../providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/year_provider.dart';
+import '../utils/dropdown_utils.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 import '../widgets/language_switcher.dart';
@@ -79,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (years.availableYears.isNotEmpty)
                 DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
-                    value: years.selectedYear ?? years.activeYear,
+                    value: safeDropdownValue(years.selectedYear ?? years.activeYear, years.availableYears),
                     dropdownColor: AppColors.gradientEnd,
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                     iconEnabledColor: Colors.white,
