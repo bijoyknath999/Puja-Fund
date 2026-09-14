@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../models/dashboard.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
 import '../utils/theme.dart';
 import '../widgets/balance_card.dart';
+import '../widgets/screen_header.dart';
 import '../widgets/transaction_tile.dart';
 import 'transaction_form_screen.dart';
 import 'transfer_form_screen.dart';
@@ -70,16 +72,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dashboard = context.watch<DashboardProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (years.availableYears.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: DropdownButtonHideUnderline(
+      body: Column(
+        children: [
+          ScreenHeader(
+            title: context.tr('dashboard'),
+            actions: [
+              if (years.availableYears.isNotEmpty)
+                DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
                     value: years.selectedYear ?? years.activeYear,
                     dropdownColor: AppColors.gradientEnd,
@@ -96,31 +95,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                   ),
                 ),
-              ),
+            ],
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadDashboard,
+              child: dashboard.isLoading && dashboard.data == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : dashboard.error != null && dashboard.data == null
+                      ? _ErrorState(message: dashboard.error!, onRetry: _loadDashboard)
+                      : _DashboardBody(data: dashboard.data, isManager: auth.isManager),
             ),
+          ),
         ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadDashboard,
-        child: dashboard.isLoading && dashboard.data == null
-            ? const Center(child: CircularProgressIndicator())
-            : dashboard.error != null && dashboard.data == null
-                ? _ErrorState(message: dashboard.error!, onRetry: _loadDashboard)
-                : _DashboardBody(data: dashboard.data, isManager: auth.isManager),
       ),
       floatingActionButton: PopupMenuButton<String>(
         onSelected: _openQuickAdd,
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'collection', child: Text('Add Collection')),
-          PopupMenuItem(value: 'expense', child: Text('Add Expense')),
-          PopupMenuItem(value: 'transfer', child: Text('New Transfer')),
+        itemBuilder: (context) => [
+          PopupMenuItem(value: 'collection', child: Text(context.trStatic('add_collection'))),
+          PopupMenuItem(value: 'expense', child: Text(context.trStatic('add_expense'))),
+          PopupMenuItem(value: 'transfer', child: Text(context.trStatic('new_transfer'))),
         ],
         child: FloatingActionButton.extended(
           heroTag: 'dashboard_quick_add_fab',
           onPressed: null,
           backgroundColor: AppColors.gradientEnd,
           icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Quick Add', style: TextStyle(color: Colors.white)),
+          label: Text(context.tr('quick_add'), style: const TextStyle(color: Colors.white)),
         ),
       ),
     );
@@ -137,7 +138,7 @@ class _DashboardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = data;
     if (d == null) {
-      return const Center(child: Text('No data available'));
+      return Center(child: Text(context.tr('no_data_available')));
     }
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -159,14 +160,14 @@ class _DashboardBody extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                isManager ? 'Recent Transactions' : 'Your Recent Transactions',
+                context.tr(isManager ? 'recent_transactions' : 'your_recent_transactions'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               if (d.recentTransactions.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: Text('No transactions yet')),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: Text(context.tr('no_transactions_yet'))),
                 )
               else
                 for (final tx in d.recentTransactions) TransactionTile(transaction: tx),
@@ -197,7 +198,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+            ElevatedButton(onPressed: onRetry, child: Text(context.tr('retry'))),
           ],
         ),
       ),

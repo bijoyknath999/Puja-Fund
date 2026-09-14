@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../providers/users_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
+import '../widgets/screen_header.dart';
 
 /// Manager-only user list with per-user stats, add user, role change and
 /// delete. API_SPEC.md lines 124-136. A manager can't change or delete
@@ -53,11 +55,11 @@ class _UsersScreenState extends State<UsersScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Change role?'),
-        content: Text('Make ${u.user.name} a $newRole?'),
+        title: Text(context.tr('change_role_q')),
+        content: Text(context.tr(newRole == 'manager' ? 'make_manager_q' : 'make_member_q', {'name': u.user.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirm')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.tr('confirm'))),
         ],
       ),
     );
@@ -69,7 +71,8 @@ class _UsersScreenState extends State<UsersScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('update_failed', {'error': '$e'}))));
     }
   }
 
@@ -77,14 +80,14 @@ class _UsersScreenState extends State<UsersScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete user?'),
-        content: Text('This permanently deletes ${u.user.name} and their transactions.'),
+        title: Text(context.tr('delete_user_q')),
+        content: Text(context.tr('delete_user_confirm', {'name': u.user.name})),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -97,7 +100,8 @@ class _UsersScreenState extends State<UsersScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('delete_failed', {'error': '$e'}))));
     }
   }
 
@@ -108,23 +112,22 @@ class _UsersScreenState extends State<UsersScreen> {
     final currentUserId = auth.currentUser?.id;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Users', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: provider.isLoading && provider.users.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : provider.error != null && provider.users.isEmpty
-              ? Center(child: Text(provider.error!))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: LayoutBuilder(
+      body: Column(
+        children: [
+          ScreenHeader(title: context.tr('users')),
+          Expanded(
+            child: provider.isLoading && provider.users.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : provider.error != null && provider.users.isEmpty
+                    ? Center(child: Text(provider.error!))
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth >= 700;
                       return ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 12, vertical: 8),
+                        padding: EdgeInsets.fromLTRB(isWide ? 32 : 12, 8, isWide ? 32 : 12, 96),
                         itemCount: provider.users.length,
                         itemBuilder: (context, i) {
                           final u = provider.users[i];
@@ -155,7 +158,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                         ),
                                       ),
                                       Chip(
-                                        label: Text(u.user.role),
+                                        label: Text(context.tr(u.user.role)),
                                         backgroundColor:
                                             u.user.isManager ? AppColors.gradientEnd.withValues(alpha: 0.15) : null,
                                       ),
@@ -165,15 +168,20 @@ class _UsersScreenState extends State<UsersScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: _StatChip(label: 'Transactions', value: u.transactionCount.toString()),
+                                        child: _StatChip(
+                                            label: context.tr('transactions_stat'),
+                                            value: u.transactionCount.toString()),
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: _StatChip(label: 'Collections', value: formatCurrency(u.totalCollections)),
+                                        child: _StatChip(
+                                            label: context.tr('collections_stat'),
+                                            value: formatCurrency(u.totalCollections)),
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: _StatChip(label: 'Expenses', value: formatCurrency(u.totalExpenses)),
+                                        child: _StatChip(
+                                            label: context.tr('expenses_stat'), value: formatCurrency(u.totalExpenses)),
                                       ),
                                     ],
                                   ),
@@ -184,21 +192,22 @@ class _UsersScreenState extends State<UsersScreen> {
                                       children: [
                                         TextButton(
                                           onPressed: () => _changeRole(u),
-                                          child: Text(u.user.isManager ? 'Make Member' : 'Make Manager'),
+                                          child: Text(context.tr(u.user.isManager ? 'make_member' : 'make_manager')),
                                         ),
                                         TextButton(
                                           onPressed: () => _deleteUser(u),
                                           style: TextButton.styleFrom(foregroundColor: AppColors.expense),
-                                          child: const Text('Delete'),
+                                          child: Text(context.tr('delete')),
                                         ),
                                       ],
                                     ),
                                   ] else
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
                                       child: Align(
                                         alignment: Alignment.centerRight,
-                                        child: Text('This is you', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                        child: Text(context.tr('this_is_you'),
+                                            style: const TextStyle(color: Colors.grey, fontSize: 12)),
                                       ),
                                     ),
                                 ],
@@ -210,12 +219,15 @@ class _UsersScreenState extends State<UsersScreen> {
                     },
                   ),
                 ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'users_add_user_fab',
         onPressed: _addUser,
         backgroundColor: AppColors.gradientEnd,
         icon: const Icon(Icons.person_add, color: Colors.white),
-        label: const Text('Add User', style: TextStyle(color: Colors.white)),
+        label: Text(context.tr('add_user'), style: const TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -293,7 +305,7 @@ class _AddUserDialogState extends State<_AddUserDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add User'),
+      title: Text(context.tr('add_user')),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -306,30 +318,30 @@ class _AddUserDialogState extends State<_AddUserDialog> {
               ],
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                decoration: InputDecoration(labelText: context.tr('name')),
+                validator: (v) => (v == null || v.trim().isEmpty) ? context.trStatic('required') : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: InputDecoration(labelText: context.tr('email')),
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? context.trStatic('required') : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: InputDecoration(labelText: context.tr('password')),
                 obscureText: true,
-                validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
+                validator: (v) => (v == null || v.length < 6) ? context.trStatic('at_least_6_chars') : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _role,
-                decoration: const InputDecoration(labelText: 'Role'),
-                items: const [
-                  DropdownMenuItem(value: 'member', child: Text('Member')),
-                  DropdownMenuItem(value: 'manager', child: Text('Manager')),
+                decoration: InputDecoration(labelText: context.tr('role')),
+                items: [
+                  DropdownMenuItem(value: 'member', child: Text(context.tr('member'))),
+                  DropdownMenuItem(value: 'manager', child: Text(context.tr('manager'))),
                 ],
                 onChanged: (v) => setState(() => _role = v ?? 'member'),
               ),
@@ -338,12 +350,13 @@ class _AddUserDialogState extends State<_AddUserDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        TextButton(
+            onPressed: _saving ? null : () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
         FilledButton(
           onPressed: _saving ? null : _submit,
           child: _saving
               ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Create'),
+              : Text(context.tr('create')),
         ),
       ],
     );

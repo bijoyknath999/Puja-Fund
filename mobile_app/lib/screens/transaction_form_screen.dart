@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../models/transaction.dart';
 import '../providers/categories_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/language_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../services/api_exception.dart';
 import '../utils/formatters.dart';
@@ -103,13 +105,13 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Balance will go negative'),
+        title: Text(context.tr('balance_negative_title')),
         content: Text(
-          'This expense will take the fund balance negative (${formatCurrency(resultingBalance)}). Do you want to continue?',
+          context.tr('balance_will_go_negative', {'balance': formatCurrency(resultingBalance)}),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Continue')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.tr('continue_label'))),
         ],
       ),
     );
@@ -165,10 +167,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   @override
   Widget build(BuildContext context) {
     final categories = context.watch<CategoriesProvider>();
+    final isBn = context.watch<LanguageProvider>().isBangla;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEdit ? 'Edit Transaction' : 'Add Transaction', style: const TextStyle(color: Colors.white)),
+        title: Text(context.tr(_isEdit ? 'edit_transaction' : 'add_transaction'),
+            style: const TextStyle(color: Colors.white)),
         flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -196,9 +200,15 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                     ],
                     if (!_isEdit)
                       SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(value: 'collection', label: Text('Collection'), icon: Icon(Icons.add_circle_outline)),
-                          ButtonSegment(value: 'expense', label: Text('Expense'), icon: Icon(Icons.remove_circle_outline)),
+                        segments: [
+                          ButtonSegment(
+                              value: 'collection',
+                              label: Text(context.tr('collection')),
+                              icon: const Icon(Icons.add_circle_outline)),
+                          ButtonSegment(
+                              value: 'expense',
+                              label: Text(context.tr('expense')),
+                              icon: const Icon(Icons.remove_circle_outline)),
                         ],
                         selected: {_type},
                         onSelectionChanged: (s) {
@@ -215,18 +225,20 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes)),
+                      decoration: InputDecoration(labelText: context.tr('description'), prefixIcon: const Icon(Icons.notes)),
                       maxLines: 2,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? context.trStatic('description_required') : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _amountController,
-                      decoration: const InputDecoration(labelText: 'Amount (৳)', prefixIcon: Icon(Icons.currency_exchange)),
+                      decoration: InputDecoration(
+                          labelText: '${context.tr('amount')} (৳)', prefixIcon: const Icon(Icons.currency_exchange)),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         final parsed = double.tryParse((v ?? '').trim());
-                        if (parsed == null || parsed <= 0) return 'Enter a valid amount';
+                        if (parsed == null || parsed <= 0) return context.trStatic('enter_valid_amount');
                         return null;
                       },
                     ),
@@ -234,7 +246,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                     InkWell(
                       onTap: _pickDate,
                       child: InputDecorator(
-                        decoration: const InputDecoration(labelText: 'Date', prefixIcon: Icon(Icons.calendar_today)),
+                        decoration: InputDecoration(labelText: context.tr('date'), prefixIcon: const Icon(Icons.calendar_today)),
                         child: Text(formatDisplayDate(_date)),
                       ),
                     ),
@@ -242,11 +254,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         initialValue: _category,
-                        decoration: const InputDecoration(labelText: 'Category', prefixIcon: Icon(Icons.category_outlined)),
+                        decoration:
+                            InputDecoration(labelText: context.tr('category'), prefixIcon: const Icon(Icons.category_outlined)),
                         items: [
-                          const DropdownMenuItem(value: null, child: Text('None')),
+                          DropdownMenuItem(value: null, child: Text(context.tr('none'))),
                           for (final c in categories.categories)
-                            DropdownMenuItem(value: c.key, child: Text(c.en)),
+                            DropdownMenuItem(value: c.key, child: Text(isBn ? c.bn : c.en)),
                         ],
                         onChanged: (v) => setState(() => _category = v),
                       ),
@@ -260,7 +273,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : Text(_isEdit ? 'Save Changes' : 'Add Transaction'),
+                          : Text(context.tr(_isEdit ? 'save_changes' : 'add_transaction')),
                     ),
                   ],
                 ),

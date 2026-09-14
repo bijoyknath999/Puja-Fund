@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
 import '../utils/theme.dart';
+import '../widgets/screen_header.dart';
 
 /// Manager-only: view/change the active year and start a new year.
 /// POST /api/settings.php - API_SPEC.md lines 78-80.
@@ -62,21 +64,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // otherwise DropdownButtonFormField asserts because its selected
         // value no longer matches any item.
         _switchToYear = null;
-        _message = 'Active year switched to $switchedTo.';
+        _message = context.trStatic('active_year_switched', {'year': '$switchedTo'});
       }
     });
-    if (err == null) refreshAllData(context);
+    if (err == null && mounted) refreshAllData(context);
   }
 
   Future<void> _startNewYear() async {
     final year = int.tryParse(_newYearController.text.trim());
     if (year == null || year < 2000 || year > 2100) {
-      setState(() => _error = 'Enter a valid 4-digit year');
+      setState(() => _error = context.trStatic('enter_valid_year'));
       return;
     }
     final years = context.read<YearProvider>();
     if (years.availableYears.contains(year)) {
-      setState(() => _error = 'That year already has data - use "Switch active year" instead.');
+      setState(() => _error = context.trStatic('year_has_data_error'));
       return;
     }
     setState(() {
@@ -91,11 +93,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (err != null) {
         _error = err;
       } else {
-        _message = 'Started new year $year as the active year.';
+        _message = context.trStatic('new_year_started', {'year': '$year'});
         _newYearController.clear();
       }
     });
-    if (err == null) refreshAllData(context);
+    if (err == null && mounted) refreshAllData(context);
   }
 
   @override
@@ -104,12 +106,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final otherYears = years.availableYears.where((y) => y != years.activeYear).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Center(
+      body: Column(
+        children: [
+          ScreenHeader(title: context.tr('settings')),
+          Expanded(
+            child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: SingleChildScrollView(
@@ -143,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Active Year', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('active_year'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Text(
                           years.activeYear?.toString() ?? '-',
@@ -151,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Switch back to a year that already has data to make it the active year again.',
+                          context.tr('active_year_desc'),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 12),
@@ -161,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           // just became the active year) - DropdownButtonFormField
                           // asserts if its value doesn't match exactly one item.
                           initialValue: otherYears.contains(_switchToYear) ? _switchToYear : null,
-                          decoration: const InputDecoration(labelText: 'Switch active year'),
+                          decoration: InputDecoration(labelText: context.tr('change_active_year')),
                           items: [
                             for (final y in otherYears) DropdownMenuItem(value: y, child: Text(y.toString())),
                           ],
@@ -170,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: (_saving || _switchToYear == null) ? null : _switchActiveYear,
-                          child: const Text('Switch Active Year'),
+                          child: Text(context.tr('change_active_year')),
                         ),
                       ],
                     ),
@@ -183,23 +184,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Start New Year', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(context.tr('start_new_year'), style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Text(
-                          'Starting a new year makes it active for new entries. Only years with no existing data can be started.',
+                          context.tr('start_new_year_desc'),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _newYearController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'New year (e.g. 2027)'),
+                          decoration: InputDecoration(labelText: context.tr('new_year_placeholder')),
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton.icon(
                           onPressed: _saving ? null : _startNewYear,
                           icon: const Icon(Icons.add_circle_outline),
-                          label: const Text('Start New Year'),
+                          label: Text(context.tr('start_new_year')),
                         ),
                       ],
                     ),
@@ -209,6 +210,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }

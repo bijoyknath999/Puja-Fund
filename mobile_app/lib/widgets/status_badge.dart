@@ -1,38 +1,39 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/context_ext.dart';
 import '../utils/theme.dart';
 
 /// Small colored pill badge - mirrors the web app's Bootstrap badges for
 /// collection (green) / expense (red) / transfer (blue) / pending (amber).
 class StatusBadge extends StatelessWidget {
-  final String label;
+  final String labelKey;
   final Color color;
 
-  const StatusBadge({super.key, required this.label, required this.color});
+  const StatusBadge({super.key, required this.labelKey, required this.color});
 
   factory StatusBadge.forType(String type) {
     switch (type) {
       case 'collection':
-        return StatusBadge(label: 'Collection', color: AppColors.collection);
+        return StatusBadge(labelKey: 'collection', color: AppColors.collection);
       case 'expense':
-        return StatusBadge(label: 'Expense', color: AppColors.expense);
+        return StatusBadge(labelKey: 'expense', color: AppColors.expense);
       case 'transfer':
-        return StatusBadge(label: 'Transfer', color: AppColors.transfer);
+        return StatusBadge(labelKey: 'transfer', color: AppColors.transfer);
       default:
-        return StatusBadge(label: type, color: Colors.grey);
+        return StatusBadge(labelKey: type, color: Colors.grey);
     }
   }
 
   factory StatusBadge.forTransferStatus(String status) {
     switch (status) {
       case 'pending':
-        return StatusBadge(label: 'Pending', color: AppColors.pending);
+        return StatusBadge(labelKey: 'pending', color: AppColors.pending);
       case 'completed':
-        return StatusBadge(label: 'Completed', color: AppColors.collection);
+        return StatusBadge(labelKey: 'completed', color: AppColors.collection);
       case 'cancelled':
-        return StatusBadge(label: 'Rejected', color: AppColors.expense);
+        return StatusBadge(labelKey: 'rejected', color: AppColors.expense);
       default:
-        return StatusBadge(label: status, color: Colors.grey);
+        return StatusBadge(labelKey: status, color: Colors.grey);
     }
   }
 
@@ -45,7 +46,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        label,
+        context.tr(labelKey),
         style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );

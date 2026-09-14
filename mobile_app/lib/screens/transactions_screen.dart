@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
@@ -10,6 +11,7 @@ import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
+import '../widgets/screen_header.dart';
 import '../widgets/status_badge.dart';
 import 'transaction_form_screen.dart';
 
@@ -91,14 +93,14 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: Text('This will permanently delete "${tx.description}".'),
+        title: Text(context.tr('delete_transaction_q')),
+        content: Text(context.tr('delete_transaction_confirm', {'description': tx.description})),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -111,7 +113,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('delete_failed', {'error': '$e'}))));
     }
   }
 
@@ -122,36 +125,40 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final currentUserId = auth.currentUser?.id;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transactions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: _openFilters),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => tx.load(),
-        child: tx.isLoading && tx.transactions.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : tx.error != null && tx.transactions.isEmpty
-                ? Center(child: Text(tx.error!))
-                : tx.transactions.isEmpty
-                    ? ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          Padding(
-                            padding: EdgeInsets.only(top: 80),
-                            child: Center(child: Text('No transactions match these filters')),
-                          ),
-                        ],
-                      )
-                    : LayoutBuilder(
+      body: Column(
+        children: [
+          ScreenHeader(
+            title: context.tr('transactions'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                onPressed: _openFilters,
+              ),
+            ],
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => tx.load(),
+              child: tx.isLoading && tx.transactions.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : tx.error != null && tx.transactions.isEmpty
+                      ? Center(child: Text(tx.error!))
+                      : tx.transactions.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 80),
+                                  child: Center(child: Text(context.tr('no_transactions_match_filters'))),
+                                ),
+                              ],
+                            )
+                          : LayoutBuilder(
                         builder: (context, constraints) {
                           final isWide = constraints.maxWidth >= 700;
                           return ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 12, vertical: 8),
+                            padding: EdgeInsets.fromLTRB(isWide ? 32 : 12, 8, isWide ? 32 : 12, 96),
                             itemCount: tx.transactions.length,
                             itemBuilder: (context, i) {
                               final t = tx.transactions[i];
@@ -192,8 +199,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                             if (v == 'delete') _delete(t);
                                           },
                                           itemBuilder: (context) => [
-                                            if (canEdit) const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                            if (canDelete) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                            if (canEdit) PopupMenuItem(value: 'edit', child: Text(context.trStatic('edit'))),
+                                            if (canDelete)
+                                              PopupMenuItem(value: 'delete', child: Text(context.trStatic('delete'))),
                                           ],
                                         ),
                                     ],
@@ -204,12 +212,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           );
                         },
                       ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: PopupMenuButton<String>(
         onSelected: _openAdd,
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'collection', child: Text('Add Collection')),
-          PopupMenuItem(value: 'expense', child: Text('Add Expense')),
+        itemBuilder: (context) => [
+          PopupMenuItem(value: 'collection', child: Text(context.trStatic('add_collection'))),
+          PopupMenuItem(value: 'expense', child: Text(context.trStatic('add_expense'))),
         ],
         child: FloatingActionButton(
           heroTag: 'transactions_add_fab',
@@ -290,13 +301,13 @@ class _FilterSheetState extends State<_FilterSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Filter Transactions', style: Theme.of(context).textTheme.titleMedium),
+            Text(context.tr('filter_transactions'), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 16),
             DropdownButtonFormField<int?>(
               initialValue: _year,
-              decoration: const InputDecoration(labelText: 'Year'),
+              decoration: InputDecoration(labelText: context.tr('year')),
               items: [
-                const DropdownMenuItem(value: null, child: Text('Any')),
+                DropdownMenuItem(value: null, child: Text(context.tr('any'))),
                 for (final y in widget.availableYears) DropdownMenuItem(value: y, child: Text(y.toString())),
               ],
               onChanged: (v) => setState(() => _year = v),
@@ -307,14 +318,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickDate(isFrom: true),
-                    child: Text(_from == null ? 'From date' : formatDisplayDate(_from!)),
+                    child: Text(_from == null ? context.tr('from_date') : formatDisplayDate(_from!)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _pickDate(isFrom: false),
-                    child: Text(_to == null ? 'To date' : formatDisplayDate(_to!)),
+                    child: Text(_to == null ? context.tr('to_date') : formatDisplayDate(_to!)),
                   ),
                 ),
               ],
@@ -322,12 +333,12 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
               initialValue: _type,
-              decoration: const InputDecoration(labelText: 'Type'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('Any')),
-                DropdownMenuItem(value: 'collection', child: Text('Collection')),
-                DropdownMenuItem(value: 'expense', child: Text('Expense')),
-                DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
+              decoration: InputDecoration(labelText: context.tr('type')),
+              items: [
+                DropdownMenuItem(value: null, child: Text(context.tr('any'))),
+                DropdownMenuItem(value: 'collection', child: Text(context.tr('collection'))),
+                DropdownMenuItem(value: 'expense', child: Text(context.tr('expense'))),
+                DropdownMenuItem(value: 'transfer', child: Text(context.tr('transfer'))),
               ],
               onChanged: (v) => setState(() => _type = v),
             ),
@@ -335,9 +346,9 @@ class _FilterSheetState extends State<_FilterSheet> {
               const SizedBox(height: 12),
               DropdownButtonFormField<int?>(
                 initialValue: _userId,
-                decoration: const InputDecoration(labelText: 'User'),
+                decoration: InputDecoration(labelText: context.tr('user')),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('Everyone')),
+                  DropdownMenuItem(value: null, child: Text(context.tr('everyone'))),
                   for (final u in widget.users)
                     DropdownMenuItem(value: u.user.id, child: Text(u.user.name)),
                 ],
@@ -357,7 +368,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         _userId = null;
                       });
                     },
-                    child: const Text('Clear'),
+                    child: Text(context.tr('clear')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -373,7 +384,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       ));
                       Navigator.of(context).pop();
                     },
-                    child: const Text('Apply'),
+                    child: Text(context.tr('apply')),
                   ),
                 ),
               ],

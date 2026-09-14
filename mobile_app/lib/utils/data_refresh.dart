@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/profile_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/transfers_provider.dart';
 import '../providers/users_provider.dart';
@@ -21,9 +22,15 @@ void refreshAllData(BuildContext context) {
   final years = context.read<YearProvider>();
   final year = years.selectedYear ?? years.activeYear;
 
+  final auth = context.read<AuthProvider>();
+
   context.read<DashboardProvider>().load(year: year);
   context.read<TransactionsProvider>().load();
-  if (context.read<AuthProvider>().isManager) {
+  final myId = auth.currentUser?.id;
+  if (myId != null) {
+    context.read<ProfileProvider>().load(year: year, userId: myId);
+  }
+  if (auth.isManager) {
     context.read<TransfersProvider>().load(year: year);
     context.read<UsersProvider>().load(year: year);
   }

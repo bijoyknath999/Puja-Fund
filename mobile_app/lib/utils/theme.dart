@@ -30,6 +30,10 @@ class AppTheme {
       scaffoldBackgroundColor: const Color(0xFFF5F6FA),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
+        // Material 3 tints custom AppBar backgrounds toward colorScheme.surfaceTint
+        // by default, which washes the brand gradient out to near-black in dark
+        // mode - disable it so `flexibleSpace`/gradient headers render true color.
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
         centerTitle: false,
@@ -68,6 +72,7 @@ class AppTheme {
       colorScheme: colorScheme,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
         centerTitle: false,

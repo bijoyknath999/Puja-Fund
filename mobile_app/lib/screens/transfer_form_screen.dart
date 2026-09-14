@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/users_provider.dart';
 import '../services/api_exception.dart';
+import '../utils/formatters.dart';
 import '../utils/theme.dart';
 
 /// Creates a transfer request - POST /api/transactions.php with
@@ -66,7 +68,7 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
     final recipientId = _selectedUserId;
 
     if (recipientId == null) {
-      setState(() => _error = 'Please choose a recipient');
+      setState(() => _error = context.trStatic('please_choose_recipient'));
       return;
     }
 
@@ -85,8 +87,8 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
             transferUserId: recipientId,
           );
       if (!mounted) return;
+      final message = result.warning ?? context.trStatic('transfer_submitted_pending');
       Navigator.of(context).pop(true);
-      final message = result.warning ?? 'Transfer request submitted - pending manager approval.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
@@ -106,7 +108,7 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Transfer', style: TextStyle(color: Colors.white)),
+        title: Text(context.tr('new_transfer'), style: const TextStyle(color: Colors.white)),
         flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -122,7 +124,7 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'A transfer request needs manager approval before it appears in transactions.',
+                      context.tr('transfer_approval_note'),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 16),
@@ -150,29 +152,32 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                     else
                       DropdownButtonFormField<int>(
                         initialValue: _selectedUserId,
-                        decoration: const InputDecoration(labelText: 'Transfer to', prefixIcon: Icon(Icons.person_outline)),
+                        decoration:
+                            InputDecoration(labelText: context.tr('transfer_to'), prefixIcon: const Icon(Icons.person_outline)),
                         items: [
                           for (final u in recipients)
                             DropdownMenuItem(value: u.id, child: Text(u.name)),
                         ],
                         onChanged: (v) => setState(() => _selectedUserId = v),
-                        validator: (v) => v == null ? 'Please choose a recipient' : null,
+                        validator: (v) => v == null ? context.trStatic('please_choose_recipient') : null,
                       ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes)),
+                      decoration: InputDecoration(labelText: context.tr('description'), prefixIcon: const Icon(Icons.notes)),
                       maxLines: 2,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Description is required' : null,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? context.trStatic('description_required') : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _amountController,
-                      decoration: const InputDecoration(labelText: 'Amount (৳)', prefixIcon: Icon(Icons.currency_exchange)),
+                      decoration: InputDecoration(
+                          labelText: '${context.tr('amount')} (৳)', prefixIcon: const Icon(Icons.currency_exchange)),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         final parsed = double.tryParse((v ?? '').trim());
-                        if (parsed == null || parsed <= 0) return 'Enter a valid amount';
+                        if (parsed == null || parsed <= 0) return context.trStatic('enter_valid_amount');
                         return null;
                       },
                     ),
@@ -180,8 +185,8 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                     InkWell(
                       onTap: _pickDate,
                       child: InputDecorator(
-                        decoration: const InputDecoration(labelText: 'Date', prefixIcon: Icon(Icons.calendar_today)),
-                        child: Text('${_date.year}-${_date.month.toString().padLeft(2, '0')}-${_date.day.toString().padLeft(2, '0')}'),
+                        decoration: InputDecoration(labelText: context.tr('date'), prefixIcon: const Icon(Icons.calendar_today)),
+                        child: Text(formatDisplayDate(_date)),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -193,7 +198,7 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Submit Request'),
+                          : Text(context.tr('submit_request')),
                     ),
                   ],
                 ),

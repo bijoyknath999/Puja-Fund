@@ -148,6 +148,12 @@ Cannot target own id (400). 200: `{"success": true, "data": null}`
 Same filters as `report.php`. 200 data:
 `{"total_collection":2000,"total_expense":500,"balance":1500,"transactions":[...]}`
 
+### `GET /api/profile.php?year=&from=&to=` (auth, any role)
+The current user's own totals - mirrors `profile.php`'s balance calculation exactly
+(`from`+`to` override `year` for the date range; with no `to`, scoped by `year`,
+defaulting to the active year). Always "me" - no `user_id` param, can't query others.
+200 data: `{"year":2026,"total_collections":2000,"total_expenses":500,"transfer_in":100,"transfer_out":50,"balance":1550}`
+
 ## Auth error example
 ```json
 {"success": false, "error": "Invalid or expired token"}

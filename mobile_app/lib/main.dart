@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/categories_provider.dart';
 import 'providers/dashboard_provider.dart';
+import 'providers/language_provider.dart';
+import 'providers/profile_provider.dart';
 import 'providers/transactions_provider.dart';
 import 'providers/transfers_provider.dart';
 import 'providers/users_provider.dart';
@@ -27,9 +29,11 @@ class PujaFundApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(apiClient: apiClient)),
         ChangeNotifierProvider(create: (_) => YearProvider(apiClient: apiClient)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(apiClient: apiClient)),
+        ChangeNotifierProvider(create: (_) => ProfileProvider(apiClient: apiClient)),
         ChangeNotifierProvider(create: (_) => TransactionsProvider(apiClient: apiClient)),
         ChangeNotifierProvider(create: (_) => TransfersProvider(apiClient: apiClient)),
         ChangeNotifierProvider(create: (_) => UsersProvider(apiClient: apiClient)),
@@ -61,6 +65,7 @@ class _RootGateState extends State<_RootGate> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().init();
+      context.read<LanguageProvider>().load();
     });
   }
 

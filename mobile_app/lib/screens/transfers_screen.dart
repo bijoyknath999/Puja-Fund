@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/context_ext.dart';
 import '../models/transfer.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transfers_provider.dart';
@@ -8,6 +9,7 @@ import '../providers/year_provider.dart';
 import '../utils/data_refresh.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
+import '../widgets/screen_header.dart';
 import '../widgets/status_badge.dart';
 import 'transfer_form_screen.dart';
 
@@ -62,7 +64,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approve failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('approve_failed', {'error': '$e'}))));
     }
   }
 
@@ -73,7 +76,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reject failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('reject_failed', {'error': '$e'}))));
     }
   }
 
@@ -81,14 +85,14 @@ class _TransfersScreenState extends State<TransfersScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete transfer?'),
-        content: const Text('This removes the transfer and its linked transactions.'),
+        title: Text(context.tr('delete_transfer_q')),
+        content: Text(context.tr('delete_transfer_desc')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.tr('cancel'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.expense),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -101,7 +105,8 @@ class _TransfersScreenState extends State<TransfersScreen> {
       refreshAllData(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.trStatic('delete_failed', {'error': '$e'}))));
     }
   }
 
@@ -110,18 +115,22 @@ class _TransfersScreenState extends State<TransfersScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transfers', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        flexibleSpace: const DecoratedBox(decoration: BoxDecoration(gradient: AppColors.gradient)),
-        iconTheme: const IconThemeData(color: Colors.white),
+      body: Column(
+        children: [
+          ScreenHeader(title: context.tr('transfers')),
+          Expanded(
+            child: auth.isManager
+                ? _ManagerTransfersList(onApprove: _approve, onReject: _reject, onDelete: _delete)
+                : _MemberTransfersInfo(onNew: _openNewRequest),
+          ),
+        ],
       ),
-      body: auth.isManager ? _ManagerTransfersList(onApprove: _approve, onReject: _reject, onDelete: _delete) : _MemberTransfersInfo(onNew: _openNewRequest),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'transfers_new_request_fab',
         onPressed: _openNewRequest,
         backgroundColor: AppColors.gradientEnd,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('New Transfer', style: TextStyle(color: Colors.white)),
+        label: Text(context.tr('new_transfer'), style: const TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -142,13 +151,13 @@ class _MemberTransfersInfo extends StatelessWidget {
             const Icon(Icons.swap_horiz, size: 56, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-              'Request a transfer to another member',
+              context.tr('request_transfer_desc'),
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'A manager needs to approve it before it shows up in transactions.',
+              context.tr('transfer_approval_note'),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
@@ -156,7 +165,7 @@ class _MemberTransfersInfo extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: onNew,
               icon: const Icon(Icons.add),
-              label: const Text('New Transfer Request'),
+              label: Text(context.tr('new_transfer_request')),
             ),
           ],
         ),
@@ -183,7 +192,7 @@ class _ManagerTransfersList extends StatelessWidget {
       return Center(child: Text(provider.error!));
     }
     if (provider.transfers.isEmpty) {
-      return const Center(child: Text('No transfers yet'));
+      return Center(child: Text(context.tr('no_transfers_yet')));
     }
 
     return RefreshIndicator(
@@ -193,7 +202,7 @@ class _ManagerTransfersList extends StatelessWidget {
           final isWide = constraints.maxWidth >= 700;
           return ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.symmetric(horizontal: isWide ? 32 : 12, vertical: 8),
+            padding: EdgeInsets.fromLTRB(isWide ? 32 : 12, 8, isWide ? 32 : 12, 96),
             itemCount: provider.transfers.length,
             itemBuilder: (context, i) {
               final t = provider.transfers[i];
@@ -235,7 +244,7 @@ class _ManagerTransfersList extends StatelessWidget {
                               child: OutlinedButton(
                                 onPressed: () => onReject(t),
                                 style: OutlinedButton.styleFrom(foregroundColor: AppColors.expense),
-                                child: const Text('Reject'),
+                                child: Text(context.tr('reject')),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -243,7 +252,7 @@ class _ManagerTransfersList extends StatelessWidget {
                               child: FilledButton(
                                 onPressed: () => onApprove(t),
                                 style: FilledButton.styleFrom(backgroundColor: AppColors.collection),
-                                child: const Text('Approve'),
+                                child: Text(context.tr('approve')),
                               ),
                             ),
                           ],
@@ -255,7 +264,7 @@ class _ManagerTransfersList extends StatelessWidget {
                           child: TextButton.icon(
                             onPressed: () => onDelete(t),
                             icon: const Icon(Icons.delete_outline, color: AppColors.expense),
-                            label: const Text('Delete', style: TextStyle(color: AppColors.expense)),
+                            label: Text(context.tr('delete'), style: const TextStyle(color: AppColors.expense)),
                           ),
                         ),
                       ],

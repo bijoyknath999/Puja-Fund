@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/context_ext.dart';
 import '../utils/formatters.dart';
 import '../utils/theme.dart';
 
@@ -40,35 +41,40 @@ class BalanceCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Fund Balance · $year',
+            '${context.tr('fund_balance')} · $year',
             style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
-          Text(
-            formatCurrency(balance),
-            style: TextStyle(
-              color: isNegative ? const Color(0xFFFFCDD2) : Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formatCurrency(balance),
+              style: TextStyle(
+                color: isNegative ? const Color(0xFFFFCDD2) : Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           if (isNegative)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Balance is negative',
-                style: TextStyle(color: Color(0xFFFFCDD2), fontSize: 12, fontWeight: FontWeight.w600),
+                context.tr('balance_is_negative'),
+                style: const TextStyle(color: Color(0xFFFFCDD2), fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
           const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: _StatTile(label: 'Collections', value: totalCollections, icon: Icons.arrow_downward),
+                child: _StatTile(label: context.tr('collections_stat'), value: totalCollections, icon: Icons.arrow_downward),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _StatTile(label: 'Expenses', value: totalExpenses, icon: Icons.arrow_upward),
+                child: _StatTile(label: context.tr('expenses_stat'), value: totalExpenses, icon: Icons.arrow_upward),
               ),
             ],
           ),

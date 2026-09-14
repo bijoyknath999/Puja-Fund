@@ -1,201 +1,82 @@
-# Ganesh Puja Fund Manager (Raw PHP + MySQL)
+# Puja Fund
 
-Lightweight, responsive, raw-PHP web application to manage collections and expenses for Ganesh Puja.
+A community fund tracker for a Puja committee: a PHP + MySQL web app, a JSON REST
+API, and a companion Flutter app for managers and members — all sharing one
+database. Bilingual (English/Bengali) throughout.
 
-## 📸 Screenshots
+## What's here
 
-### Dashboard Overview
-![Dashboard](screenshots/dashboard.png)
-*Modern glass morphism design with fund balance summary and recent transactions*
+- **Web app** (repo root, e.g. `index.php`, `transactions.php`, `users.php`, ...) —
+  the primary interface. Session-based login, Bootstrap 5 UI.
+- **REST API** (`api/`) — token-based JSON API used by the mobile app. See
+  [API_SPEC.md](API_SPEC.md) for the full endpoint contract.
+- **Mobile app** (`mobile_app/`) — Flutter app for Android/iOS, for managers and
+  members. See [mobile_app/README.md](mobile_app/README.md) (Flutter's default) and
+  the "Mobile app" section below for the parts specific to this project.
 
-### Mobile Responsive Design
-![Mobile View](screenshots/mobile-view.png)
-*Optimized card layout for mobile devices*
+## Features
 
-## 🚀 Quick Setup
+- **Yearly fund tracking**: a manager sets the "active year" (Settings page); every
+  page defaults to it, new entries are dated into it, and past years stay browsable
+  without losing data.
+- **Pooled fund balance**: collections and expenses are tracked against one shared
+  fund total per year, not per member. Adding an expense that would take the fund
+  negative asks for confirmation instead of being blocked outright.
+- **Transfers**: a member requests a transfer to another member; a manager
+  approves/rejects it before it becomes a real transaction.
+- **Roles**: `manager` (full access — users, reports, settings, approvals) and
+  `member` (their own transactions + transfer requests).
+- **Bilingual**: English and Bengali (বাংলা) on both the web app and the mobile app,
+  switchable at any time.
+- **Mobile-responsive** web UI, plus the native Flutter app for phones/tablets.
 
-### Option 1: Automated Installation (Recommended)
-1. Upload all files to your web server
-2. Navigate to `installation.php` in your browser
-3. Follow the 3-step installation wizard:
-   - Configure database connection
-   - Create database tables automatically
-   - Set up admin user account
-4. Delete `installation.php` after completion for security
+## Setup (fresh install)
 
-### Option 2: Manual Setup
-1. Create MySQL database (e.g. puja_fund)
-2. Import `db_schema.sql` into your database
-3. Edit `db.php` with your database credentials
-4. Access the application via `login.php`
+1. Upload all files (except `mobile_app/`, which is a separate project — see below)
+   to your web server.
+2. Create a MySQL database and import the schema:
+   ```bash
+   mysql -u your_user -p your_db < db_schema.sql
+   ```
+3. Edit `db.php` with your real database credentials.
+4. Visit the site in a browser — with no users yet, it redirects to
+   `installation.php` to create the first manager account. **Delete
+   `installation.php` after that succeeds** (it's a setup wizard, not meant to stay
+   on a live server).
+5. Log in and start using it. Optionally deploy `api/` too if you plan to use the
+   mobile app (it reuses `db.php`, no separate config needed).
 
-## ✨ Features
+### Security notes
 
-### 🎨 Modern Design
-- **Glass Morphism UI**: Beautiful translucent cards with backdrop blur effects
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
-- **Smooth Animations**: Engaging slide-up, fade-in, and floating animations
-- **Dark Theme**: Elegant gradient backgrounds with floating geometric shapes
-- **Interactive Elements**: Hover effects, loading states, and micro-interactions
+- Use a strong database password and a strong manager password.
+- Serve over HTTPS in production — the mobile app requires it for release builds.
+- Keep regular database backups (`mysqldump`).
+- Delete `installation.php` once setup is done.
 
-### 👥 User Management
-- **Role-Based Access**: Manager and Member roles with different permissions
-- **User Registration**: Managers can add new users to the system
-- **Profile Management**: User profile viewing and management
-- **Secure Authentication**: Password hashing and session management
+## Mobile app
 
-### 💰 Financial Management
-- **Transaction Tracking**: Record collections and expenses with detailed descriptions
-- **Category System**: Organize expenses by type (decoration, food, supplies, etc.)
-- **Real-Time Balance**: Live calculation of current fund balance
-- **Transaction History**: Complete audit trail of all financial activities
-- **Monthly Reports**: Summarized views of collections and expenses
+Lives in `mobile_app/`, built with Flutter (Provider for state, a thin `ApiClient`
+wrapper around the REST API). The API address is a plain constant in
+`mobile_app/lib/services/api_client.dart` (`_defaultBaseUrl`) — edit that string to
+point at your server, then build:
 
-### 📊 Dashboard & Analytics
-- **Interactive Dashboard**: Overview of fund status with key metrics
-- **Quick Actions**: Fast access to common tasks
-- **Recent Transactions**: Latest activity at a glance
-- **Fund Health Indicators**: Visual status of fund surplus/deficit
-- **Member Statistics**: Track user contributions and activities
-
-## 🚀 Quick Start
-
-### Prerequisites
-- PHP 7.4 or higher
-- MySQL 5.7 or higher
-- Web server (Apache/Nginx) or PHP built-in server
-
-### Installation
-
-1. **Download & Upload**
-   - Download all project files
-   - Upload to your web server directory
-
-2. **Automated Setup (Recommended)**
-   - Navigate to `installation.php` in your browser
-   - Complete the 3-step installation wizard
-   - Delete `installation.php` after successful setup
-
-3. **Manual Setup (Alternative)**
-   - Create MySQL database
-   - Import `db_schema.sql`
-   - Configure `db.php` with database credentials
-   - Create admin user via user management
-
-4. **Access Application**
-   - Navigate to your domain/folder
-   - Login with your created admin credentials
-
-## 📱 Usage Guide
-
-### For Managers
-- **Dashboard**: View complete fund overview and statistics
-- **Add Transactions**: Record both collections and expenses
-- **Manage Users**: Add new members, change roles, delete users
-- **View Reports**: Access detailed financial reports
-- **User Management**: Full administrative control
-
-### For Members
-- **Dashboard**: View fund status and recent activity
-- **Add Transactions**: Record collections and expenses
-- **View History**: Access transaction history
-- **Profile**: Manage personal account settings
-
-## 🛠️ Technical Details
-
-### Technology Stack
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **UI Framework**: Bootstrap 5.3.2
-- **Icons**: Bootstrap Icons 1.11.0
-- **Fonts**: Inter (Google Fonts)
-- **Backend**: PHP 7.4+
-- **Database**: MySQL 5.7+
-- **Architecture**: MVC-inspired structure
-
-### File Structure
-```
-puja-fund/
-├── index.php                  # Main dashboard
-├── login.php                  # Authentication page
-├── add.php                    # Add transaction form
-├── transactions.php           # Transaction listing
-├── users.php                  # User management (managers only)
-├── report.php                 # Financial reports
-├── db.php                     # Database connection
-├── auth.php                   # Authentication middleware
-├── installation.php           # Setup wizard (delete after use)
-├── edit.php                   # Edit transaction form
-├── delete.php                 # Delete transaction handler
-├── logout.php                 # Logout handler
-├── db_schema.sql              # Database structure & sample data
-└── README.md                  # This file
+```bash
+cd mobile_app
+flutter pub get
+flutter run                       # debug, on a connected device/emulator
+flutter build apk --release       # Android release APK
+flutter build ios --release       # iOS (needs Xcode + an Apple Developer account)
 ```
 
-### Database Schema
-- **users**: User accounts with roles and authentication
-- **transactions**: Financial records with categories and metadata
-- **transaction_summary**: View for monthly summaries
+## Tech stack
 
-## 🎯 Key Improvements
+- **Web**: PHP (MySQLi, prepared statements throughout), Bootstrap 5, vanilla JS.
+- **API**: plain PHP under `api/`, bearer-token auth (`api_tokens` table), JSON
+  envelope responses — see [API_SPEC.md](API_SPEC.md).
+- **Mobile**: Flutter, Provider, `http`, `shared_preferences`.
+- **Database**: MySQL — `users`, `transactions`, `transfers`, `settings`,
+  `api_tokens`.
 
-### From Previous Version
-1. **Modern UI/UX**: Complete redesign with glass morphism and animations
-2. **Responsive Design**: Mobile-first approach with fluid layouts
-3. **Enhanced Security**: Improved authentication and input validation
-4. **Better UX**: Loading states, notifications, and smooth interactions
-5. **Category System**: Expense categorization for better organization
-6. **User Management**: Complete admin panel for user administration
-7. **Performance**: Optimized queries and database indexes
+## License
 
-## 🔧 Customization
-
-### Styling
-- Modify CSS variables in `assets/css/style.css` to change colors and themes
-- Update gradient backgrounds and glass morphism effects
-- Customize animation timings and effects
-
-### Features
-- Add new expense categories in the add transaction form
-- Extend user roles and permissions
-- Add new report types and analytics
-- Integrate with external payment systems
-
-## 🔒 Security Features
-
-- **Password Hashing**: Secure bcrypt password hashing
-- **SQL Injection Protection**: Prepared statements throughout
-- **XSS Prevention**: Input sanitization and output escaping
-- **Session Management**: Secure session handling
-- **Role-Based Access**: Proper authorization checks
-
-## 📈 Future Enhancements
-
-- **Email Notifications**: Alert users about important transactions
-- **Export Features**: PDF/Excel export of reports
-- **Mobile App**: Native mobile application
-- **Multi-Language**: Support for regional languages
-- **Advanced Analytics**: Charts and graphs for better insights
-- **Backup System**: Automated database backups
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 📞 Support
-
-For support and questions:
-- Check the documentation above
-- Review the code comments
-- Contact your system administrator
-
----
-
-**Built with ❤️ for the community** - Making puja fund management beautiful and efficient!
+Open source, MIT License.
