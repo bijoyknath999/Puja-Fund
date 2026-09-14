@@ -5,10 +5,8 @@ import 'api_exception.dart';
 
 /// Thin wrapper around the PHP JSON REST API described in API_SPEC.md.
 ///
-/// - Base URL defaults to [_defaultBaseUrl] below - set it directly in code
-///   so `flutter run`/`flutter build` work with no extra flags. It can still
-///   be overridden per-build with `--dart-define=API_BASE_URL=...` (e.g. to
-///   point a release build at a different server) without editing this file.
+/// - Base URL is [_defaultBaseUrl] below - edit that string directly to
+///   point the app at your server; no --dart-define or env var involved.
 /// - Every response follows the envelope: `{"success": true, "data": ...}`
 ///   or `{"success": false, "error": "..."}` (API_SPEC.md "Envelope").
 /// - Auth is a bearer token attached as `Authorization: Bearer <token>`.
@@ -18,15 +16,13 @@ class ApiClient {
   // - Physical device on the same WiFi as your computer: http://<your-computer's-LAN-IP>:8899
   // - Production: https://your-domain.com
   static const String _defaultBaseUrl = 'http://192.168.1.22:8899';
-  static const String _envBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: _defaultBaseUrl);
 
   final String baseUrl;
   final http.Client _http;
   String? _token;
 
   ApiClient({String? baseUrl, http.Client? httpClient})
-      : baseUrl = baseUrl ?? _envBaseUrl,
+      : baseUrl = baseUrl ?? _defaultBaseUrl,
         _http = httpClient ?? http.Client();
 
   void setToken(String? token) {

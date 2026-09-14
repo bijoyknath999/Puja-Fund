@@ -97,22 +97,29 @@ You should get back `{"success":true,"data":{"token":"...", ...}}`.
 
 ## 6. Building the Flutter app for real use
 
-The app was built and tested locally against `http://<your-computer-ip>:8899`. For
-real use, point it at your live domain instead, using `--dart-define`:
+The API address is a plain string in the code, not an environment variable or
+build flag — edit `mobile_app/lib/services/api_client.dart` and change
+`_defaultBaseUrl` to your live domain before building:
+
+```dart
+static const String _defaultBaseUrl = 'https://your-domain.com';
+```
+
+Then build as usual:
 
 ```bash
 cd mobile_app
 flutter pub get
 
 # Debug build, to test on your own device against the live API:
-flutter run --dart-define=API_BASE_URL=https://your-domain.com
+flutter run
 
 # Release APK, to share with other Android users:
-flutter build apk --release --dart-define=API_BASE_URL=https://your-domain.com
+flutter build apk --release
 # Output: mobile_app/build/app/outputs/flutter-apk/app-release.apk
 
 # iOS (requires a Mac + Xcode + an Apple Developer account to distribute):
-flutter build ios --release --dart-define=API_BASE_URL=https://your-domain.com
+flutter build ios --release
 ```
 
 Your live domain must be served over **HTTPS** for a release build shipped to real
@@ -126,8 +133,10 @@ Since this is now pushed to GitHub, setting up on another machine is:
 ```bash
 git clone https://github.com/bijoyknath999/Puja-Fund.git
 cd Puja-Fund/mobile_app
+# Edit lib/services/api_client.dart's _defaultBaseUrl first if it needs to
+# point somewhere other than what's already committed.
 flutter pub get
-flutter run --dart-define=API_BASE_URL=https://your-domain.com
+flutter run
 ```
 
 Requires Flutter installed (`flutter doctor` should report no blocking issues) and, for
