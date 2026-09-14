@@ -5,16 +5,19 @@ import 'api_exception.dart';
 
 /// Thin wrapper around the PHP JSON REST API described in API_SPEC.md.
 ///
-/// - Base URL defaults to `http://10.0.2.2:8899` (the special alias the
-///   Android emulator uses to reach `localhost` on the host machine, where
-///   the PHP dev server is expected to run e.g. `php -S localhost:8899`).
-///   Override with `--dart-define=API_BASE_URL=http://192.168.x.x:8899` for
-///   a physical device, or any other host for iOS simulator / desktop.
+/// - Base URL defaults to [_defaultBaseUrl] below - set it directly in code
+///   so `flutter run`/`flutter build` work with no extra flags. It can still
+///   be overridden per-build with `--dart-define=API_BASE_URL=...` (e.g. to
+///   point a release build at a different server) without editing this file.
 /// - Every response follows the envelope: `{"success": true, "data": ...}`
 ///   or `{"success": false, "error": "..."}` (API_SPEC.md "Envelope").
 /// - Auth is a bearer token attached as `Authorization: Bearer <token>`.
 class ApiClient {
-  static const String _defaultBaseUrl = 'http://10.0.2.2:8899';
+  // Change this to match your PHP dev server's address on your network.
+  // - Android emulator reaching the host machine: http://10.0.2.2:8899
+  // - Physical device on the same WiFi as your computer: http://<your-computer's-LAN-IP>:8899
+  // - Production: https://your-domain.com
+  static const String _defaultBaseUrl = 'http://192.168.1.22:8899';
   static const String _envBaseUrl =
       String.fromEnvironment('API_BASE_URL', defaultValue: _defaultBaseUrl);
 
