@@ -117,6 +117,7 @@ class _TransfersScreenState extends State<TransfersScreen> {
       ),
       body: auth.isManager ? _ManagerTransfersList(onApprove: _approve, onReject: _reject, onDelete: _delete) : _MemberTransfersInfo(onNew: _openNewRequest),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'transfers_new_request_fab',
         onPressed: _openNewRequest,
         backgroundColor: AppColors.gradientEnd,
         icon: const Icon(Icons.add, color: Colors.white),

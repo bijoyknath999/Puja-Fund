@@ -211,6 +211,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'users_add_user_fab',
         onPressed: _addUser,
         backgroundColor: AppColors.gradientEnd,
         icon: const Icon(Icons.person_add, color: Colors.white),

@@ -116,6 +116,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           PopupMenuItem(value: 'transfer', child: Text('New Transfer')),
         ],
         child: FloatingActionButton.extended(
+          heroTag: 'dashboard_quick_add_fab',
           onPressed: null,
           backgroundColor: AppColors.gradientEnd,
           icon: const Icon(Icons.add, color: Colors.white),

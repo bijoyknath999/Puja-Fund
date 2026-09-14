@@ -212,6 +212,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           PopupMenuItem(value: 'expense', child: Text('Add Expense')),
         ],
         child: FloatingActionButton(
+          heroTag: 'transactions_add_fab',
           onPressed: null,
           backgroundColor: AppColors.gradientEnd,
           child: const Icon(Icons.add, color: Colors.white),

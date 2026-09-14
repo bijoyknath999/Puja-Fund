@@ -15,7 +15,7 @@ class ApiClient {
   // - Android emulator reaching the host machine: http://10.0.2.2:8899
   // - Physical device on the same WiFi as your computer: http://<your-computer's-LAN-IP>:8899
   // - Production: https://your-domain.com
-  static const String _defaultBaseUrl = 'http://192.168.1.22:8899';
+  static const String _defaultBaseUrl = 'https://puja.bijoyknath.top';
 
   final String baseUrl;
   final http.Client _http;
