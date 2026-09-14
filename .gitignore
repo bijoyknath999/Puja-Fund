@@ -9,3 +9,8 @@
 
 # Local database dumps
 *.sql.bak
+
+# Signing keys/keystores - never commit these, anywhere in the repo
+*.jks
+*.keystore
+key.properties
