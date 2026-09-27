@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required at runtime for the app to reach the REST API (api_client.dart) -
+         Flutter's template only puts this in the debug/profile-only manifests
+         (for its own hot-reload tooling), so release builds had no network
+         access at all without it here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Puja Fund"
         android:name="${applicationName}"
