@@ -2,6 +2,7 @@
 include 'auth.php';
 include 'db.php';
 include 'lang.php';
+include 'balance_helper.php';
 
 // Check if user is manager
 if($_SESSION['user']['role'] != 'manager') {
@@ -34,12 +35,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $conn->begin_transaction();
         try {
             // Get transfer details
-            $stmt = $conn->prepare("SELECT * FROM transfers WHERE id = ? AND status = 'pending'");
+            $stmt = $conn->prepare("SELECT * FROM transfers WHERE id = ? AND status = 'pending' FOR UPDATE");
             $stmt->bind_param('i', $transfer_id);
             $stmt->execute();
             $transfer = $stmt->get_result()->fetch_assoc();
             
-            if ($transfer) {
+            // Re-check at approval time: the sender's balance may have dropped since the request.
+            $balance_error = $transfer
+                ? transferBalanceError($conn, $transfer['from_user_id'], floatval($transfer['amount']), $transfer['transfer_date'], $transfer_id)
+                : null;
+            if ($balance_error) {
+                $conn->rollback();
+                $message = getUserName($transfer['from_user_id'], $conn) . ' - ' . $balance_error;
+                $messageType = 'error';
+            } elseif ($transfer) {
                 // Create transfer transaction for sender (outgoing)
                 $transfer_desc = "Transfer to " . getUserName($transfer['to_user_id'], $conn) . " : " . $transfer['description'];
                 $stmt_out = $conn->prepare("INSERT INTO transactions (type, description, amount, date, category, added_by) VALUES ('transfer', ?, ?, ?, NULL, ?)");

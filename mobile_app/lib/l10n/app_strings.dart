@@ -113,6 +113,9 @@ class AppStrings {
     'transfer_approval_note':
         'A transfer request needs manager approval before it appears in transactions.',
     'no_transfers_yet': 'No transfers yet',
+    'available_to_transfer': 'Available to transfer ({year}): {amount}',
+    'pending_held': '{amount} held by pending requests',
+    'amount_exceeds_available': 'Amount is more than your available balance ({amount})',
     'approve': 'Approve',
     'reject': 'Reject',
     'delete_transfer_q': 'Delete transfer?',
@@ -273,6 +276,9 @@ class AppStrings {
     'transfer_approval_note':
         'লেনদেনে প্রদর্শিত হওয়ার আগে স্থানান্তর অনুরোধের জন্য ম্যানেজারের অনুমোদন প্রয়োজন।',
     'no_transfers_yet': 'এখনও কোন স্থানান্তর নেই',
+    'available_to_transfer': 'স্থানান্তরযোগ্য ব্যালেন্স ({year}): {amount}',
+    'pending_held': '{amount} অপেক্ষমাণ অনুরোধে আটকে আছে',
+    'amount_exceeds_available': 'পরিমাণ আপনার উপলব্ধ ব্যালেন্সের ({amount}) চেয়ে বেশি',
     'approve': 'অনুমোদন',
     'reject': 'প্রত্যাখ্যান',
     'delete_transfer_q': 'স্থানান্তর মুছবেন?',

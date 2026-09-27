@@ -92,7 +92,7 @@ function handlePost($conn, $user) {
     $body = getJsonBody();
     $type = $body['type'] ?? '';
     $description = trim($body['description'] ?? '');
-    $amount = isset($body['amount']) ? floatval($body['amount']) : 0;
+    $amount = isset($body['amount']) ? round(floatval($body['amount']), 2) : 0;
     $date = $body['date'] ?? '';
     $category = $body['category'] ?? null;
 
@@ -109,14 +109,17 @@ function handlePost($conn, $user) {
             jsonError('transfer_user_id is required for transfers', 400);
         }
 
-        // Per-user transfer balance check (all-time, unchanged from transactions.php's balance_check)
-        $currentBalance = getUserTransferBalance($conn, $user['id']);
-        if ($currentBalance < $amount) {
-            jsonError(
-                'Insufficient balance. Your current balance is ৳' . number_format($currentBalance, 2) .
-                ' but you are trying to transfer ৳' . number_format($amount, 2),
-                400
-            );
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            jsonError('Invalid date', 400);
+        }
+        if ($transferUserId === intval($user['id'])) {
+            jsonError('You cannot transfer to yourself', 400);
+        }
+
+        // Per-user balance for the transfer's year, minus pending requests (balance_helper.php)
+        $balanceError = transferBalanceError($conn, $user['id'], $amount, $date);
+        if ($balanceError) {
+            jsonError($balanceError, 400);
         }
 
         // Creates a pending transfer request; only visible in transactions after manager approval.

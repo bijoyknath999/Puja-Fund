@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/context_ext.dart';
+import '../models/parsing.dart';
 import '../providers/auth_provider.dart';
 import '../providers/transactions_provider.dart';
 import '../providers/users_provider.dart';
+import '../services/api_client.dart';
 import '../services/api_exception.dart';
 import '../utils/dropdown_utils.dart';
 import '../utils/formatters.dart';
@@ -34,6 +36,12 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
   String? _error;
   bool _loadedUsers = false;
 
+  // Transfer balance for the selected date's year (GET /api/profile.php),
+  // same number the server checks the request against.
+  int? _balanceYear;
+  double? _available;
+  double _pending = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -41,8 +49,30 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
       _loadedUsers = true;
       // Defer past the current build - see dashboard_screen.dart for why.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<UsersProvider>().loadDirectory();
+        if (!mounted) return;
+        context.read<UsersProvider>().loadDirectory();
+        _loadAvailable();
       });
+    }
+  }
+
+  Future<void> _loadAvailable() async {
+    final year = _date.year;
+    setState(() {
+      _balanceYear = year;
+      _available = null;
+      _pending = 0;
+    });
+    try {
+      final res = await context.read<ApiClient>().get('/api/profile.php', query: {'year': year});
+      final data = res['data'] as Map<String, dynamic>;
+      if (!mounted || _balanceYear != year) return;
+      setState(() {
+        _available = toDouble(data['transfer_available'] ?? data['balance']);
+        _pending = toDouble(data['transfer_pending']);
+      });
+    } on ApiException {
+      // Not fatal - the server still checks the balance on submit.
     }
   }
 
@@ -60,7 +90,9 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked == null) return;
+    setState(() => _date = picked);
+    if (picked.year != _balanceYear) _loadAvailable();
   }
 
   Future<void> _submit() async {
@@ -146,9 +178,20 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                         child: LinearProgressIndicator(),
                       )
                     else if (usersProvider.directoryError != null)
-                      Text(
-                        usersProvider.directoryError!,
-                        style: const TextStyle(color: AppColors.expense),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              usersProvider.directoryError!,
+                              style: const TextStyle(color: AppColors.expense),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () => context.read<UsersProvider>().loadDirectory(),
+                            icon: const Icon(Icons.refresh),
+                            label: Text(context.tr('retry')),
+                          ),
+                        ],
                       )
                     else
                       DropdownButtonFormField<int>(
@@ -179,9 +222,31 @@ class _TransferFormScreenState extends State<TransferFormScreen> {
                       validator: (v) {
                         final parsed = double.tryParse((v ?? '').trim());
                         if (parsed == null || parsed <= 0) return context.trStatic('enter_valid_amount');
+                        final available = _available;
+                        if (available != null && parsed > available + 0.001) {
+                          return context.trStatic('amount_exceeds_available', {'amount': formatCurrency(available)});
+                        }
                         return null;
                       },
                     ),
+                    if (_available != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        context.tr('available_to_transfer', {
+                          'year': '$_balanceYear',
+                          'amount': formatCurrency(_available!),
+                        }),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: _available! > 0 ? AppColors.collection : AppColors.expense,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      if (_pending > 0)
+                        Text(
+                          context.tr('pending_held', {'amount': formatCurrency(_pending)}),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                        ),
+                    ],
                     const SizedBox(height: 16),
                     InkWell(
                       onTap: _pickDate,

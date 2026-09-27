@@ -3,6 +3,12 @@
 # Enable rewrite engine
 RewriteEngine On
 
+# Pass the Authorization header through to PHP. Apache strips it by default
+# when PHP runs as CGI/FastCGI (PHP-FPM), which breaks API bearer auth.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
 # Security headers
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options nosniff

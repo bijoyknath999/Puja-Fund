@@ -7,7 +7,7 @@
 // - role-gate helper for manager-only endpoints
 
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Auth-Token');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -20,6 +20,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../year_helper.php';
 require_once __DIR__ . '/../categories.php';
+require_once __DIR__ . '/../balance_helper.php';
 
 // ---- Response helpers -------------------------------------------------
 
@@ -53,6 +54,10 @@ function getBearerToken() {
     }
     if ($header && preg_match('/Bearer\s+(\S+)/i', $header, $m)) {
         return $m[1];
+    }
+    // Fallback for hosts that strip Authorization before it reaches PHP.
+    if (!empty($_SERVER['HTTP_X_AUTH_TOKEN'])) {
+        return trim($_SERVER['HTTP_X_AUTH_TOKEN']);
     }
     return null;
 }
@@ -99,23 +104,6 @@ function getFundBalanceForYear($conn, $year) {
         WHERE YEAR(date) = ?
     ");
     $stmt->bind_param('i', $year);
-    $stmt->execute();
-    return floatval($stmt->get_result()->fetch_assoc()['balance']);
-}
-
-// Per-user all-time running balance: collections - expenses + transfers_in - transfers_out.
-// Same query as transactions.php's "balance_check".
-function getUserTransferBalance($conn, $user_id) {
-    $stmt = $conn->prepare("
-        SELECT
-            COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) +
-            COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as balance
-        FROM transactions
-        WHERE added_by = ?
-    ");
-    $stmt->bind_param('i', $user_id);
     $stmt->execute();
     return floatval($stmt->get_result()->fetch_assoc()['balance']);
 }

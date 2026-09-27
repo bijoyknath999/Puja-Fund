@@ -4,6 +4,7 @@ include 'db.php';
 include 'lang.php';
 include 'categories.php';
 include 'year_helper.php';
+include 'balance_helper.php';
 
 $lang = getCurrentLanguage();
 $t = getTranslations($lang);
@@ -47,22 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Handle transfer transaction
         $transfer_user_id = intval($_POST['transfer_user_id']);
         
-        // Check if user has sufficient balance
-        $balance_check = $conn->prepare("
-            SELECT 
-                COALESCE(SUM(CASE WHEN type = 'collection' THEN amount ELSE 0 END), 0) -
-                COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) +
-                COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer from%' THEN amount ELSE 0 END), 0) -
-                COALESCE(SUM(CASE WHEN type = 'transfer' AND description LIKE '%Transfer to%' THEN amount ELSE 0 END), 0) as balance
-            FROM transactions 
-            WHERE added_by = ?
-        ");
-        $balance_check->bind_param('i', $user_id);
-        $balance_check->execute();
-        $current_balance = $balance_check->get_result()->fetch_assoc()['balance'];
-        
-        if ($current_balance < $amount) {
-            $_SESSION['error'] = 'Insufficient balance. Your current balance is ৳' . number_format($current_balance, 2) . ' but you are trying to transfer ৳' . number_format($amount, 2);
+        // Balance for the transfer's year, minus pending requests (balance_helper.php)
+        $balance_error = transferBalanceError($conn, $user_id, floatval($amount), $date);
+        if ($balance_error) {
+            $_SESSION['error'] = $balance_error;
             header('Location: transactions.php');
             exit();
         }

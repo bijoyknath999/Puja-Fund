@@ -48,7 +48,10 @@ $totalExpenses = sumFor($conn, $where, $types, $params, "type = 'expense'");
 $transferIn = sumFor($conn, $where, $types, $params, "type = 'transfer' AND description LIKE '%Transfer from%'");
 $transferOut = sumFor($conn, $where, $types, $params, "type = 'transfer' AND description LIKE '%Transfer to%'");
 
-$balance = $totalCollections - $totalExpenses + $transferIn - $transferOut;
+$balance = round($totalCollections - $totalExpenses + $transferIn - $transferOut, 2);
+
+// What the transfer check allows for this year (balance_helper.php).
+$transferBalance = getUserTransferBalance($conn, $user['id'], $year);
 
 jsonSuccess([
     'year' => $year,
@@ -57,4 +60,6 @@ jsonSuccess([
     'transfer_in' => $transferIn,
     'transfer_out' => $transferOut,
     'balance' => $balance,
+    'transfer_pending' => $transferBalance['pending'],
+    'transfer_available' => $transferBalance['available'],
 ]);

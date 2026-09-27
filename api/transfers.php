@@ -50,6 +50,13 @@ if ($method === 'GET') {
                 jsonError('Transfer not found or already processed', 404);
             }
 
+            // Re-check at approval time: the sender's balance may have dropped since the request.
+            $balanceError = transferBalanceError($conn, $transfer['from_user_id'], floatval($transfer['amount']), $transfer['transfer_date'], $id);
+            if ($balanceError) {
+                $conn->rollback();
+                jsonError('Cannot approve: ' . getUserNameById($conn, $transfer['from_user_id']) . ' - ' . $balanceError, 400);
+            }
+
             $transferDescOut = "Transfer to " . getUserNameById($conn, $transfer['to_user_id']) . " : " . $transfer['description'];
             $stmtOut = $conn->prepare("INSERT INTO transactions (type, description, amount, date, category, added_by) VALUES ('transfer', ?, ?, ?, NULL, ?)");
             $stmtOut->bind_param('sdsi', $transferDescOut, $transfer['amount'], $transfer['transfer_date'], $transfer['from_user_id']);

@@ -33,6 +33,8 @@ class ApiClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',
+        // Duplicate of the bearer token for hosts that strip Authorization.
+        if (_token != null) 'X-Auth-Token': _token!,
       };
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
@@ -77,6 +79,7 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? query,
     Map<String, dynamic>? body,
+    bool isRetry = false,
   }) async {
     final uri = _uri(path, query);
     late http.Response res;
@@ -108,6 +111,13 @@ class ApiClient {
     } on ApiException {
       rethrow;
     } catch (e) {
+      // A GET is safe to repeat: retry once, since a pooled connection the
+      // server already closed or a brief network switch on the phone fails
+      // the first attempt without the request ever reaching the server.
+      if (method == 'GET' && !isRetry) {
+        await Future.delayed(const Duration(milliseconds: 400));
+        return _send(method, path, query: query, body: body, isRetry: true);
+      }
       throw ApiException('Could not reach server: $e', 0);
     }
     return _parse(res);

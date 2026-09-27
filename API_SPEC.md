@@ -54,10 +54,12 @@ the `warning` if the server still returns one (e.g. balance changed concurrently
 
 Pooled fund balance for a year = `SUM(collection.amount) - SUM(expense.amount) WHERE YEAR(date) = ?`.
 
-Transfers remain a per-user check: a user can't transfer more than their own personal
-running balance (`collections - expenses + transfers_in - transfers_out`, all-time, not
-year-scoped) — this mirrors the existing web app behavior in `transactions.php` and is
-unchanged.
+Transfers are a per-user check (`balance_helper.php`, shared with the web app): a user
+can't transfer more than their personal balance for the transfer date's year
+(`collections - expenses + transfers_in - transfers_out`, same number as
+`GET /api/profile.php?year=`) minus their other pending outgoing transfer requests for
+that year. The check runs when the request is created and again when a manager approves
+it. `GET /api/profile.php` returns this as `transfer_available` (and `transfer_pending`).
 
 ## Endpoints
 
