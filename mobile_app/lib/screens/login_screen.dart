@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Icon(Icons.temple_hindu, size: 56, color: AppColors.gradientEnd),
+                              Center(child: Image.asset('assets/icon/logo.png', height: 84)),
                               const SizedBox(height: 12),
                               Text(
                                 context.tr('app_name'),
